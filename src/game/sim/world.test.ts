@@ -1,4 +1,5 @@
 import { FORMATION_2_2, anchorFor, type Role } from '../config/formations';
+import { MATCH } from '../config/pace';
 import { createWorld, resetWorld, type World } from './world';
 
 interface WorldSnapshot {
@@ -47,6 +48,8 @@ interface WorldSnapshot {
     scoreAway: number;
     clockSec: number;
     half: 1 | 2;
+    phaseTimer: number;
+    kickoffTeam: 0 | 1;
   };
   eventsLength: number;
   pendingHitstopFrames: number;
@@ -96,9 +99,12 @@ describe('world state', () => {
     const second = createWorld(1234);
 
     expect(snapshotWorld(first)).toEqual(snapshotWorld(second));
-    expect(first.match.phase).toBe('PLAYING');
+    expect(first.match.phase).toBe('KICKOFF');
+    expect(first.match.phaseTimer).toBe(MATCH.kickoffBeatSec);
+    expect(first.match.kickoffTeam).toBe(0);
     expect(first.ball.pos).toEqual({ x: 0, y: 0, z: 0 });
     expect(first.ball.prevPos).toEqual({ x: 0, y: 0, z: 0 });
+    expect(first.ball.vel).toEqual({ x: 0, y: 0, z: 0 });
     expect(first.ball.owner).toBeNull();
     expect(first.ball.pendingImpulse).toBeNull();
     expect(first.ball.cooldown).toBe(0);
@@ -160,6 +166,8 @@ describe('world state', () => {
     world.match.phase = 'GOAL';
     world.match.scoreHome = 2;
     world.match.clockSec = 88;
+    world.match.phaseTimer = 1.2;
+    world.match.kickoffTeam = 1;
     world.events.push({ type: 'bounce', tick: world.tick });
     world.pendingHitstopFrames = 3;
     world.rng.next();

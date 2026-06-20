@@ -4,6 +4,8 @@ import {
   BINDINGS,
   DRIBBLE,
   FEEL,
+  GOAL,
+  MATCH,
   MOVE,
   PASS,
   PITCH,
@@ -21,6 +23,7 @@ import {
   createTime,
   createWorld,
   inputSystem,
+  matchSystem,
   movementSystem,
   pressAction,
   requestHitstop,
@@ -72,6 +75,7 @@ describe('game public API', () => {
     movementSystem(world, 0);
     ballSystem(world, 0);
     actionSystem(world, 0);
+    matchSystem(world, 0);
     requestHitstop(time, 1);
     simulate(world, 1 / 60);
     resetWorld(world, 10);
@@ -90,9 +94,11 @@ describe('game public API', () => {
     expect(anchorFor(slot, 1).x).toBeGreaterThan(0);
     expect(intent.shoot).toBe(false);
     expect(PITCH.halfX).toBe(21);
+    expect(GOAL.halfWidth).toBe(3.5);
     expect(PLAYER_RADIUS).toBe(0.5);
     expect(BALL_RADIUS).toBe(0.22);
     expect(MOVE.maxSpeed).toBe(8);
+    expect(MATCH.halfLengthSec).toBe(120);
     expect(BALL.shotSpeed).toBe(22);
     expect(DRIBBLE.distance).toBe(0.9);
     expect(PASS.speed).toBe(16);

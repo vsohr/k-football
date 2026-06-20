@@ -46,6 +46,39 @@ export class AudioBus {
     this.noise(0.16, 0.18, 'bandpass', 500, 2200);
   }
 
+  /** Goal: a short ascending celebratory triad. */
+  goal(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    [523, 659, 784, 1047].forEach((f, i) => {
+      this.thumpAt(f, 0.01, 0.22, 0.3, 'triangle', i * 0.09);
+    });
+  }
+
+  private thumpAt(
+    freq: number,
+    attack: number,
+    duration: number,
+    gain: number,
+    type: OscillatorType,
+    delay: number,
+  ): void {
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master) return;
+    const t0 = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(g).connect(master);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
   /** White-noise burst through a frequency-ramped biquad filter. */
   private noise(duration: number, gain: number, type: BiquadFilterType, fStart: number, fEnd: number): void {
     const ctx = this.ctx;

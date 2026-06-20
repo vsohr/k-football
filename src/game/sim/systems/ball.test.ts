@@ -1,4 +1,4 @@
-import { BALL_RADIUS, PITCH } from '../../config/dimensions';
+import { BALL_RADIUS, GOAL, PITCH } from '../../config/dimensions';
 import { BALL, DRIBBLE } from '../../config/pace';
 import { createWorld, type Player, type World } from '../world';
 import { ballSystem } from './ball';
@@ -74,6 +74,7 @@ describe('ballSystem', () => {
     const world = createWorld(4);
     const maxX = PITCH.halfX - BALL_RADIUS;
     world.ball.pos.x = maxX - 0.05;
+    world.ball.pos.z = GOAL.halfWidth + 0.5;
     world.ball.vel.x = 10;
     world.ball.vel.z = 0;
 
@@ -83,6 +84,58 @@ describe('ballSystem', () => {
     expect(world.ball.vel.x).toBeLessThan(0);
     expect(world.ball.pos.z).toBeGreaterThanOrEqual(-PITCH.halfZ + BALL_RADIUS);
     expect(world.ball.pos.z).toBeLessThanOrEqual(PITCH.halfZ - BALL_RADIUS);
+  });
+
+  it('does not bounce a loose ball through the goal mouth', () => {
+    const world = createWorld(8);
+    const maxX = PITCH.halfX - BALL_RADIUS;
+    moveAllPlayersAway(world);
+    world.ball.pos.x = maxX - 0.05;
+    world.ball.pos.z = 0;
+    world.ball.vel.x = 10;
+    world.ball.vel.z = 0;
+    world.ball.cooldown = 2;
+
+    ballSystem(world, 0.1);
+
+    expect(world.ball.pos.x).toBeGreaterThan(PITCH.halfX);
+    expect(world.ball.vel.x).toBeGreaterThan(0);
+    expect(world.events).toEqual([]);
+  });
+
+  it('sweeps against posts so a fast ball cannot tunnel through', () => {
+    const world = createWorld(9);
+    moveAllPlayersAway(world);
+    world.ball.pos.x = PITCH.halfX - 0.8;
+    world.ball.pos.z = GOAL.halfWidth;
+    world.ball.vel.x = 90;
+    world.ball.vel.z = 0;
+    world.ball.cooldown = 2;
+
+    ballSystem(world, 1 / 60);
+
+    expect(world.ball.pos.x).toBeLessThan(PITCH.halfX);
+    expect(world.ball.vel.x).toBeLessThan(0);
+    expect(world.events).toHaveLength(1);
+    expect(world.events[0]).toMatchObject({ type: 'post', tick: 0 });
+    expect(world.events[0]?.at?.x).toBeCloseTo(PITCH.halfX - BALL_RADIUS, 2);
+    expect(world.events[0]?.at?.z).toBeCloseTo(GOAL.halfWidth, 2);
+  });
+
+  it('sweeps against side boards across the full length', () => {
+    const world = createWorld(10);
+    const maxZ = PITCH.halfZ - BALL_RADIUS;
+    moveAllPlayersAway(world);
+    world.ball.pos.x = 0;
+    world.ball.pos.z = maxZ - 0.05;
+    world.ball.vel.x = 0;
+    world.ball.vel.z = 10;
+    world.ball.cooldown = 2;
+
+    ballSystem(world, 0.1);
+
+    expect(world.ball.pos.z).toBe(maxZ);
+    expect(world.ball.vel.z).toBeLessThan(0);
   });
 
   it('picks up a loose ball at cooldown zero and prefers the controlled player', () => {

@@ -1,5 +1,6 @@
 import { createRng, type Rng } from '../core/rng';
 import { FORMATION_2_2, anchorFor, type Role, type Slot } from '../config/formations';
+import { MATCH } from '../config/pace';
 import { createInputSource, type InputIntent, type InputSource } from '../input/source';
 
 export interface Vec3 {
@@ -45,6 +46,8 @@ export interface MatchState {
   scoreAway: number;
   clockSec: number;
   half: 1 | 2;
+  phaseTimer: number;
+  kickoffTeam: 0 | 1;
 }
 
 export type FeelEventType =
@@ -78,21 +81,9 @@ export interface World {
   switchCooldown: number;
 }
 
-const INITIAL_BALL_VEL: Vec3 = {
-  x: 4,
-  y: 0,
-  z: 2.5,
-};
-
 const CONTROLLED_HOME_ID = 3;
 
 const initialSeeds = new WeakMap<World, number>();
-
-function setVec3(target: Vec3, source: Vec3): void {
-  target.x = source.x;
-  target.y = source.y;
-  target.z = source.z;
-}
 
 function createZeroIntent(): InputIntent {
   return {
@@ -171,7 +162,9 @@ function applyInitialState(world: World, seed: number): void {
   world.ball.prevPos.x = 0;
   world.ball.prevPos.y = 0;
   world.ball.prevPos.z = 0;
-  setVec3(world.ball.vel, INITIAL_BALL_VEL);
+  world.ball.vel.x = 0;
+  world.ball.vel.y = 0;
+  world.ball.vel.z = 0;
   world.ball.owner = null;
   world.ball.pendingImpulse = null;
   world.ball.cooldown = 0;
@@ -181,11 +174,13 @@ function applyInitialState(world: World, seed: number): void {
   setIntentZero(world.intent);
   setInputZero(world.input);
 
-  world.match.phase = 'PLAYING';
+  world.match.phase = 'KICKOFF';
   world.match.scoreHome = 0;
   world.match.scoreAway = 0;
   world.match.clockSec = 0;
   world.match.half = 1;
+  world.match.phaseTimer = MATCH.kickoffBeatSec;
+  world.match.kickoffTeam = 0;
 
   world.rng = createRng(seed);
   world.events.length = 0;
@@ -200,7 +195,7 @@ export function createWorld(seed: number): World {
     ball: {
       pos: { x: 0, y: 0, z: 0 },
       prevPos: { x: 0, y: 0, z: 0 },
-      vel: { x: INITIAL_BALL_VEL.x, y: INITIAL_BALL_VEL.y, z: INITIAL_BALL_VEL.z },
+      vel: { x: 0, y: 0, z: 0 },
       owner: null,
       pendingImpulse: null,
       cooldown: 0,
@@ -210,11 +205,13 @@ export function createWorld(seed: number): World {
     intent: createZeroIntent(),
     input: createInputSource(),
     match: {
-      phase: 'PLAYING',
+      phase: 'KICKOFF',
       scoreHome: 0,
       scoreAway: 0,
       clockSec: 0,
       half: 1,
+      phaseTimer: MATCH.kickoffBeatSec,
+      kickoffTeam: 0,
     },
     rng: createRng(seed),
     events: [],

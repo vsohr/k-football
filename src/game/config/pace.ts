@@ -34,3 +34,9 @@ export const TACKLE = {
   popSpeed: 5,
   popHitstop: 4,
 } as const;
+
+export const MATCH = {
+  halfLengthSec: 120,
+  kickoffBeatSec: 0.75,
+  celebrationSec: 2.5,
+} as const;

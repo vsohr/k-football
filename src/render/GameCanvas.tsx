@@ -18,10 +18,18 @@ import { usePlayerInput } from './useInput';
 import { FeelController } from './feel/FeelController';
 import { AudioBus } from './feel/AudioBus';
 import { useMetaStore } from '@/state/metaStore';
+import { Field } from './Field';
 
-/** Camera framing: near-top-down tilted perspective (~57° from horizontal), modest FOV (D6). */
-const CAMERA_POS: [number, number, number] = [0, 26, 15];
-const CAMERA_FOV = 40;
+const PHASE_TOAST: Partial<Record<MatchPhase, string>> = {
+  GOAL: 'GOAL!',
+  HALF_TIME: 'HALF TIME',
+  FULL_TIME: 'FULL TIME',
+};
+
+/** Camera: near-top-down tilted perspective (~59° from horizontal), framing the whole
+ * goal-to-goal pitch incl. both goals; modest FOV to limit distortion (D6). */
+const CAMERA_POS: [number, number, number] = [0, 32, 19];
+const CAMERA_FOV = 46;
 const BALL_RENDER_RADIUS = 0.4;
 const KIT_COLOR = ['#E8453C', '#2D6CF0'] as const;
 
@@ -92,6 +100,11 @@ function GameDriver({ model }: { model: GameModel }) {
           case 'tackleWhiff':
             audio.whiff();
             break;
+          case 'goal':
+            feel.addTrauma(0.7);
+            feel.addFlash(0.6);
+            audio.goal();
+            break;
           default:
             break;
         }
@@ -122,6 +135,7 @@ function GameDriver({ model }: { model: GameModel }) {
           clockSec: clockShown,
           half: m.half,
           phase: m.phase,
+          toast: PHASE_TOAST[m.phase] ?? null,
         });
       }
 
@@ -230,11 +244,7 @@ function Scene() {
         shadow-camera-bottom={-30}
         shadow-normalBias={0.04}
       />
-      {/* Pitch plane (M0/M1 placeholder green; real grass at M5). 42x26 + margin. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[50, 34]} />
-        <meshStandardMaterial color="#3FAE5A" />
-      </mesh>
+      <Field />
       <GameDriver model={model} />
     </>
   );

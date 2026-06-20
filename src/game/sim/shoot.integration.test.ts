@@ -22,6 +22,7 @@ describe('shoot deferred impulse integration', () => {
     const world = createWorld(1);
     const time = createTime();
     const player = getControlledPlayer(world);
+    world.match.phase = 'PLAYING';
     player.pos.x = 0;
     player.pos.z = 0;
     player.vel.x = 0;
