@@ -19,6 +19,7 @@ import { FeelController } from './feel/FeelController';
 import { AudioBus } from './feel/AudioBus';
 import { useMetaStore } from '@/state/metaStore';
 import { Field } from './Field';
+import { Effects } from './Effects';
 import { ConfettiController } from './feel/ConfettiController';
 
 const PHASE_TOAST: Partial<Record<MatchPhase, string>> = {
@@ -199,7 +200,12 @@ function GameDriver({ model }: { model: GameModel }) {
       </instancedMesh>
       <mesh ref={ballRef} castShadow>
         <sphereGeometry args={[BALL_RENDER_RADIUS, 24, 24]} />
-        <meshStandardMaterial color="#FFD23F" emissive="#FFD23F" emissiveIntensity={0.25} />
+        <meshStandardMaterial
+          color="#FFD23F"
+          emissive="#FFD23F"
+          emissiveIntensity={1.5}
+          toneMapped={false}
+        />
       </mesh>
       {world.players.map((p, i) => (
         <group
@@ -220,7 +226,7 @@ function GameDriver({ model }: { model: GameModel }) {
           {p.control === 'human' && (
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
               <ringGeometry args={[0.62, 0.78, 28]} />
-              <meshBasicMaterial color="#FFD23F" transparent opacity={0.9} />
+              <meshBasicMaterial color="#FFE76A" transparent opacity={0.95} toneMapped={false} />
             </mesh>
           )}
         </group>
@@ -295,6 +301,7 @@ export function GameCanvas() {
     >
       <color attach="background" args={['#0d1117']} />
       <Scene />
+      <Effects />
     </Canvas>
   );
 }
