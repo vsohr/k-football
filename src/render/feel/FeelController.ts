@@ -5,11 +5,13 @@
  */
 const TRAUMA_DECAY = 1.4; // per second
 const FLASH_DECAY = 3.0; // per second
+const SQUASH_DECAY = 6.0; // per second (fast snap back)
 const KICK_RETURN = 12; // per second (exponential-ish ease back)
 
 export class FeelController {
   trauma = 0;
   flash = 0;
+  squash = 0;
   private kickX = 0;
   private kickZ = 0;
   private seed = 0x2545f491;
@@ -23,6 +25,11 @@ export class FeelController {
     this.flash = Math.min(1, this.flash + amount);
   }
 
+  /** One-shot squash pulse (0..1), e.g. on a strike. Decays fast. */
+  addSquash(amount: number): void {
+    this.squash = Math.min(1, this.squash + amount);
+  }
+
   /** One-shot directional camera impulse (springs back). */
   kick(dx: number, dz: number): void {
     this.kickX += dx;
@@ -33,6 +40,7 @@ export class FeelController {
   update(dt: number): void {
     this.trauma = Math.max(0, this.trauma - TRAUMA_DECAY * dt);
     this.flash = Math.max(0, this.flash - FLASH_DECAY * dt);
+    this.squash = Math.max(0, this.squash - SQUASH_DECAY * dt);
     const ease = Math.max(0, 1 - KICK_RETURN * dt);
     this.kickX *= ease;
     this.kickZ *= ease;

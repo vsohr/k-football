@@ -65,6 +65,7 @@ function GameDriver({ model }: { model: GameModel }) {
           const power = ev.power ?? 1;
           feel.addTrauma(shootTrauma(power));
           feel.addFlash(0.12 * power);
+          feel.addSquash(1);
           feel.kick(0, -0.35 * power);
           audio.shoot(power);
         }
@@ -79,6 +80,9 @@ function GameDriver({ model }: { model: GameModel }) {
           lerp(b.prevPos.y, b.pos.y, alpha) + BALL_RENDER_RADIUS,
           lerp(b.prevPos.z, b.pos.z, alpha),
         );
+        // squash & stretch: flatten vertically + bulge horizontally on a strike.
+        const s = feel.squash;
+        ballRef.current.scale.set(1 + s * 0.35, 1 - s * 0.3, 1 + s * 0.35);
       }
       for (let i = 0; i < world.players.length; i++) {
         const p = world.players[i];
