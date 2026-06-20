@@ -49,8 +49,24 @@ asset pipeline, determinism caveat, feel event schema, feel dev-tooling into M1.
 keep going until done." Remote: github.com/vsohr/k-football (gh authed). main + spec
 pushed.
 
-## Next steps
-1. Round-2 Codex review of full expanded spec (incl. graphics) — IN PROGRESS.
-2. Incorporate, merge spec → main, push.
-3. Build worktree; M0 scaffold via Codex (TDD) → review → commit/push; then M1...M3b,
-   then graphics M4-M7. Codex codes, Claude reviews each chunk.
+## Build status (branch build/mvp)
+- [x] Round-2 Codex review done; spec merged to main + pushed.
+- [x] M0 scaffold (Vite7/R3F9/React19/strict TS/Vitest); deps pinned; build+typecheck green.
+- [x] M0 core (Codex, TDD): loop/time/rng/world/sim/index barrel; 22 tests; Claude-reviewed.
+- [x] M0 render shell (me): GameCanvas frameloop=never + manual driver (loop.advance →
+      bridge.sync interpolation → r3fAdvance), tilted perspective cam, AgX, sun+hemisphere,
+      shadowed pitch, interpolated ball.
+- [x] M0 verified: headless screenshot = lit pitch + ball + drop shadow; ball moves
+      (loop running). typecheck/test/lint/build green.
+
+## Verification method
+Headless: `npm run build` + `vite preview` + google-chrome-stable --headless=new
+--use-angle=swiftshader --screenshot. First shot can be a blank rAF-timing flake — reshoot.
+No Playwright yet (add at E2E milestone).
+
+## Next: M1 — feel loop on primitives (THE heart)
+Input manager+buffer; one human player + ball dribble; SHOOT via deferred-impulse +
+feel-system core (hitstop/shake/camera-kick/audio-unlock/trail/squash) + ball blob
+shadow + leva feel panel. TDD; Codex for sim/feel logic, me for R3F/UI; commit+push per
+chunk. Then M2 (dummy players + actions + match) → M3a (keeper+goal) → M3b (AI) →
+graphics M4-M7.
