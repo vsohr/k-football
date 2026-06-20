@@ -19,6 +19,7 @@ describe('input source', () => {
       shootBuf: 0,
       passBuf: 0,
       tackleBuf: 0,
+      switchBuf: 0,
     });
 
     setMove(source, 2, -3);
@@ -47,6 +48,30 @@ describe('input source', () => {
     expect(source.tackleBuf).toBe(0);
   });
 
+  it('latches switch into a buffer and decrements once per sample', () => {
+    const source = createInputSource();
+
+    pressAction(source, 'switch');
+
+    const intent = sampleIntent(source);
+
+    expect(intent.switch).toBe(true);
+    expect(source.switchBuf).toBe(SHOOT_BUFFER_TICKS - 1);
+  });
+
+  it('empties switch after the configured number of samples', () => {
+    const source = createInputSource();
+
+    pressAction(source, 'switch');
+
+    for (let i = 0; i < SHOOT_BUFFER_TICKS; i += 1) {
+      expect(sampleIntent(source).switch).toBe(true);
+    }
+
+    expect(source.switchBuf).toBe(0);
+    expect(sampleIntent(source).switch).toBe(false);
+  });
+
   it('empties an action buffer after the configured number of samples', () => {
     const source = createInputSource();
 
@@ -68,5 +93,15 @@ describe('input source', () => {
 
     expect(source.tackleBuf).toBe(0);
     expect(sampleIntent(source).tackle).toBe(false);
+  });
+
+  it('consumes the switch buffer immediately', () => {
+    const source = createInputSource();
+
+    pressAction(source, 'switch');
+    consumeAction(source, 'switch');
+
+    expect(source.switchBuf).toBe(0);
+    expect(sampleIntent(source).switch).toBe(false);
   });
 });

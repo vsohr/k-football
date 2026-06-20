@@ -21,8 +21,11 @@ npm test           # 95 deterministic sim tests
 npm run build      # static production bundle
 ```
 
-**Controls:** Move `WASD`/arrows · Pass `J` · Shoot `K`/`Space` · Tackle `Shift` ·
-auto-switch to the nearest player · `Esc` to pause. Audio unlocks on the first keypress.
+**Controls — Xbox gamepad (primary):** Move with the left stick / D-pad · **B** shoot ·
+**A** pass (in possession) / tackle (out of possession) · **Y** switch player (out of
+possession) · **RB** sprint. **Keyboard (fallback):** move `WASD`/arrows · shoot
+`J`/`Space` · pass `K` · sprint `Shift`. Control auto-switches to the player nearest the
+ball; `Esc`/`Space` pause. Audio unlocks on the first input.
 
 ## Architecture (built)
 
