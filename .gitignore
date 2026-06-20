@@ -46,3 +46,6 @@ test-results/
 
 # Codex agent scratch
 .codex/
+
+# TS build cache
+*.tsbuildinfo
