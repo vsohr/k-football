@@ -115,8 +115,10 @@ look and alternates — only light colors / sky / grade change.
 - **`<BakeShadows/>`** for shadows that don't need to update every frame (static set).
 
 ### 2.4 Materials
-- **Pitch & stadium**: `MeshStandardMaterial` (PBR) — flat-ish roughness, low metal;
-  lighting + AO + grade do the work. Plays correctly with Environment and bloom.
+- **Pitch & stadium**: tier the material (see §4) — **`MeshLambertMaterial`** for the
+  cheap early/flat pitch, **`MeshStandardMaterial`** (PBR, flat-ish roughness, low
+  metal) once normal/AO maps or `<Environment>` IBL are in use; lighting + AO + grade do
+  the work, plays correctly with Environment and bloom.
 - **Players**: PBR base **+ a subtle Fresnel/rim term** for the premium toy sheen and
   silhouette separation. Cleanest route that **keeps three's shadows/lighting/fog**:
   **`three-custom-shader-material`** writing the rim into `csm_Emissive`
@@ -145,8 +147,12 @@ look and alternates — only light colors / sky / grade change.
 ## 3. Post-processing — the "glaze"
 
 `@react-three/postprocessing` (pmndrs/postprocessing). One `EffectComposer`; effects
-are merged where possible. Driven by the **quality tier** (§6) and rendered in the
-manual loop's present step (`composer.render()` — we use `frameloop="never"`).
+are merged where possible. Driven by the **quality tier** (§8). Rendering note: the
+`<EffectComposer>` renders via its own internal `useFrame`, so with `frameloop="never"`
+our loop triggers it by calling **`advance(now)`** (tech §3.2) — we do **not** call
+`composer.render()` ourselves. Also set the composer to an **HDR buffer**
+(`frameBufferType={THREE.HalfFloatType}`) so emissive values > 1 survive for threshold
+bloom.
 
 ### 3.1 Recommended chain & order
 1. **Ambient occlusion** — **N8AO** (the `n8ao` package; better quality/perf than
@@ -201,8 +207,10 @@ already deliver most of the "wow"; AO/tilt-shift/DoF/CA are progressive.
   tex.magFilter = THREE.LinearFilter;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); // ~16 (NOT the deprecated getMaxAnisotropy())
   ```
-  Use **power-of-two** texture sizes (2048²–4096²) or WebGL disables mipmaps. Set
-  `<Canvas dpr={[1,2]}>` first — blurry distant ground is often a DPR problem, not AA.
+  Prefer **power-of-two** texture sizes (2048²–4096²) — recommended for repeat-wrap,
+  compression, and WebGL1 fallback (WebGL2 allows NPOT mipmaps, but POT is the safe
+  default). Set `<Canvas dpr={[1,2]}>` first — blurry distant ground is often a DPR
+  problem, not AA.
 - **Line markings**: **bake into the texture** (validated winner). Avoid geometry
   lines for ground markings: `Line2`+`worldUnits` has documented oblique-angle
   artifacts (three #26916 — exactly our grazing case) and plain `THREE.Line` ignores
@@ -221,8 +229,10 @@ already deliver most of the "wow"; AO/tilt-shift/DoF/CA are progressive.
 Cross-references the feel spec (`02-feel-spec.md`) — there it's *when*, here it's *how*.
 - **Particle system**: **`three.quarks`** or **`wawa-vfx`** (R3F-friendly) for
   spray/sparks/dust; drei **`<Trail>`** for the ball streak; drei **`<Sparkles>`** for
-  ambient motes; **`r3f-confetti`** for the goal burst. Budget **~50k CPU particles /
-  <100 draw calls**.
+  ambient motes; **`r3f-confetti`** for the goal burst. Budget: **gameplay bursts kept
+  low (≈ hundreds–low-thousands of live particles)**; reserve large counts (the goal
+  confetti) for **GPU/instanced** emitters only, and tier them down on Low. Total **<100
+  draw calls**. (Don't run tens of thousands of *CPU* particles per frame in gameplay.)
 - **Turf spray** (tackle/sprint): short-lived green specks flung along the impact
   vector. **Confetti** (goal): instanced colored quads in scorer's colors. **Impact
   sparks/dust**: small additive bursts. **Ball trail**: ribbon/streak on shots,
@@ -272,9 +282,12 @@ Cross-references the feel spec (`02-feel-spec.md`) — there it's *when*, here i
 
 ## 8. Quality tiers & performance
 
-Target **60 fps on a mid laptop**. One `quality` setting (auto-detect + manual),
-also the low-end fallback. drei **`<PerformanceMonitor>`** + **`<AdaptiveDpr>`** to
-auto-scale; **DPR capped ~2**.
+**Medium is the 60 fps target on a mid laptop.** **High is benchmark-gated** — enabled
+only when `useDetectGPU`/a short FPS probe says the GPU can hold 60 fps with the full
+stack (N8AO + PCSS + bloom + tilt-shift + animated crowd + 2048 shadows together is a
+real budget and *will* exceed a weak mid-GPU). Low is the fallback. One `quality`
+setting (auto-detect + manual); drei **`<PerformanceMonitor>`** + **`<AdaptiveDpr>`**
+auto-degrade under sustained load; **DPR capped ~2**.
 
 | Feature | Low | Medium | High |
 |---------|-----|--------|------|
@@ -326,7 +339,9 @@ material/texture (three does not GC GPU resources).
 - **License manifest** in `assets/CREDITS.md` (tech §18). CC0-first for the open build.
 - **Dev graphics tuning panel** (`leva`): live control of tone mapping/exposure, light
   colors/intensities, fog, bloom/AO/tiltshift/LUT params — author the hero look by eye,
-  then freeze values into `config/graphics.ts`. Built alongside the feel panel (M1).
+  then freeze values into `config/graphics.ts`. The `leva` **panel shell + the feel
+  controls** ship in **M1**; the **graphics controls** are added in **M4** (when the
+  lighting/post layers exist) — not at M1.
 
 ---
 
@@ -419,3 +434,27 @@ releases; `n8ao`; Bloom/SelectiveBloom/SMAA/TiltShift/DoF/LUT pmndrs docs; R3F s
 performance + pitfalls; `detect-gpu`; `r3f-perf`; TextureCan #469 pitch set; three issue
 #26916 (Line2 oblique-angle); FluffyGrass + Codrops grass article; instanced-grass perf
 thread. (Full URLs captured in the research transcripts.)
+
+---
+
+## Appendix B — Open graphics items to specify during M4–M7
+
+Not blockers for M0/M1 (primitives), but each art milestone must nail these before its
+review gate (flagged by the round-2 review):
+- **Transparency & render order**: explicit ordering/`depthWrite`/`renderOrder` for net
+  alpha, confetti, additive light cones, crowd sprites, selection rings (alpha sorting
+  is a classic source of "why is the net in front of the ball" bugs).
+- **Texture & render-target memory budget**: pitch 2K vs 4K, shadow map sizes, post
+  buffers (AO half-res, bloom mip chain), KTX2 vs generated CanvasTexture — set a total
+  VRAM target per tier.
+- **Asset loader setup**: KTX2 transcoder path + Draco/meshopt decoder wiring for glTF
+  (a common "works in dev, 404s in prod" trap).
+- **Shader-compile stutter**: `<Preload all>` + a warm-up pass that pre-compiles the
+  post stack, confetti, and goal-flash materials before kickoff so the first goal
+  doesn't hitch.
+- **Capability matrix**: half-float, depth textures, MSAA, KTX2 support across
+  Chrome/Firefox/Safari + WebGL2 detection → which tier each maps to; unsupported path.
+- **Post render-target sizing**: `resolutionScale` / half-res AO interaction with DPR;
+  correct behavior on window resize.
+- **Visual regression**: fixed-camera-seed screenshots for Low/Med/High to catch look
+  regressions as the pipeline evolves.

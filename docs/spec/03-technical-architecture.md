@@ -55,9 +55,10 @@ Rules of the seam:
   typed state. This makes it unit-testable and deterministic, and means it *never
   changes* as we climb the ladder.
 - **Presentation reads sim state by reference each render frame** and pushes it onto
-  meshes imperatively (mutate `mesh.position` in `useFrame`), interpolating between the
-  last two sim steps for smoothness. **No per-frame React re-renders** for moving
-  objects (that path is too slow and causes GC churn).
+  meshes imperatively: components register mesh refs, and the loop's **`bridge.sync(alpha)`
+  mutates those refs before `advance(now)`** (§3.2) — interpolating between the last two
+  sim steps for smoothness. **No hot-path `useFrame` for game logic, no per-frame React
+  re-renders** for moving objects (that path is too slow and causes GC churn).
 - **Communication sim→presentation** is (1) shared mutable world state read by ref, and
   (2) a **semantic event queue** ("goal", "tackleClean", "post") the feel system
   drains. Sim emits *meaning*, never *effects*.
@@ -256,7 +257,8 @@ single most important correctness detail in the physics layer.
   the ball is pinned against a board under a player; emit `bounce`. Boards are
   **visible** (low rail) so rebounds read (game-design §1.3).
 - Goal mouth: gap in the boards; a **goal trigger** behind the line detects a scored
-  goal (ball center fully past line, within posts, under bar) via swept line crossing.
+  goal when the **whole ball** crosses (center past line by ≥ `ball.radius`), within
+  posts, under bar, via swept line crossing.
 - Posts/bar: thin **swept** colliders → reflect + emit the high-value `post` event.
 - Net + back wall: explicit geometry so a scored ball is trapped/ripples, not lost.
 
@@ -323,8 +325,9 @@ AI max speed factor (≤ human). MVP ships one tuned set.
 - **Meta/UI state**: a **Zustand** store holds only what the DOM HUD/menus need —
   `score`, `clock`, `half`, `phase`, `result`. Sim writes to it on change (throttled).
   HUD components subscribe with selectors → minimal re-renders.
-- **No game state in component state / context for moving objects.** R3F objects read
-  the world via refs in `useFrame`.
+- **No game state in component state / context for moving objects.** Moving meshes are
+  driven by `bridge.sync(alpha)` (mesh-ref mutation) in the authoritative loop before
+  `advance(now)` — not by a hot-path `useFrame` (§2, §3.2).
 
 ---
 
@@ -344,7 +347,7 @@ Presentation is structured so each ladder layer is a localized change:
   (the key readability cue, P4) — works even before real shadow maps.
 - **Lighting/shadows** (L2): one directional "sun" w/ shadow map + hemisphere fill.
   Biggest perceived-quality jump.
-- **Tone mapping** (L3): `ACESFilmicToneMapping` + correct color space — one-time
+- **Tone mapping** (L3): `AgXToneMapping` base (ACES alternate) + correct color space — one-time
   renderer config.
 - **Environment/PBR** (L4): `MeshStandardMaterial` + drei `<Environment>`.
 - **Animation** (L6): `AnimationMixer`, clips blended by `Player.state` (idle/run/kick/

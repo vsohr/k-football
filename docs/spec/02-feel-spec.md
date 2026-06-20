@@ -229,8 +229,10 @@ This keeps the sim/presentation seam clean (tech doc §Architecture) so the fide
 ladder can climb without touching gameplay.
 
 **Event schema (each `FeelEvent` carries these — not just raw numbers):**
-- `clock`: which timeline each channel uses — hitstop & gameplay squash on **sim
-  time**; shake/flash/camera/audio on **real time** (tech doc §3.1). Tag per channel.
+- `clock`: which timeline each channel uses — **hitstop is authored in frames but
+  counts down on *real* time** (`n/60` seconds; a sim-time countdown can't expire while
+  sim time is frozen — tech §3.1); gameplay squash runs on **sim time**;
+  shake/flash/camera/audio on **real time**. Tag per channel.
 - `units`: hitstop/windup in **sim frames** (÷60 → seconds); trauma 0–1; durations in
   ms (real time); particle counts as ints. State the unit at the field.
 - `priority`: when two events fire together, the higher priority wins the *exclusive*

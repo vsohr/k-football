@@ -62,7 +62,41 @@ Codex pass on the eventual M0/M1 *plan* are the next review gates.
 
 ---
 
-## Round 2 — (pending) Codex review of the revised spec
-To run after the user reviews. Then: Codex reviews the M0/M1 implementation **plan**
-(writing-plans gate), then reviews Codex's own M0/M1 **code** (executing-plans gate),
-each independently verified by Claude.
+## Round 2 — Codex review of the revised + graphics-expanded spec (2026-06-20)
+
+Scope: verify round-1 fixes held, review the new `06-graphics.md` hard, and judge
+build-readiness. Verdict: **conditional yes — design is ready; fix a handful of
+cross-doc loop/time/tone-mapping contradictions before handing M0/M1 to a coding
+agent.** Round-1 fixes all confirmed held.
+
+| Sev | Finding | Resolution |
+|-----|---------|------------|
+| major | Graphics §3 said `composer.render()`, contradicting the `advance(now)` loop contract | Reworded: EffectComposer renders via R3F during `advance(now)`; never call `composer.render()`. Graphics §3 |
+| major | Feel §7 tagged hitstop as **sim-time** (can't expire while sim is frozen) | Hitstop authored in frames, **counts down on real time** (`n/60`). Feel §7 |
+| major | ACES leftovers in overview/tech vs AgX in graphics/roadmap | Unified on **AgX base, ACES alternate** across overview §3, tech §9, graphics §2.1 |
+| major | High-tier 60 fps optimistic (N8AO+PCSS+bloom+tiltshift+crowd+shadows+particles) | **Medium = 60 fps target; High benchmark-gated**; gameplay particle budget cut to hundreds–low-thousands, big counts GPU-only. Graphics §8, §5 |
+| major | HDR/bloom buffer under-specified | Added `frameBufferType={HalfFloatType}` requirement for threshold bloom. Graphics §3 |
+| major | Graphics tuning panel sequenced at M1 but graphics start M4 | M1 = panel shell + feel controls; **graphics controls at M4**. Graphics §10 |
+| stale | Tech still said meshes mutate in `useFrame` (2 places) | Reworded to `bridge.sync(alpha)` ref-mutation before `advance()`; no hot-path useFrame. Tech §2, §8 |
+| minor | Pitch material conflict (§2.4 Standard vs §4 Lambert) | Tiered: Lambert early/flat, Standard with maps. Graphics §2.4, §4 |
+| minor | Anti-flicker NPOT wording wrong (WebGL2 allows NPOT mipmaps) | Reworded: POT recommended for repeat/compression/WebGL1 fallback, not a WebGL2 requirement. Graphics §4 |
+| minor | Goal wording "center past line" vs "whole ball crosses" | Specified: **center past line by ≥ `ball.radius`**. Tech §6 |
+| minor | Perspective + tilt-shift could fight readability (P4) | Keep gameplay tilt-shift gentle, focus-band tracks play, off on Low, readability-gated. Graphics §3/§7/§8 |
+
+**Graphics gaps** (not blockers; each art milestone M4–M7 must address before its gate):
+transparency/render-order, texture/RT memory budget, KTX2/Draco loader wiring,
+shader-compile stutter (`<Preload>`/warm-up), browser capability matrix, post RT sizing,
+visual-regression captures. Captured as **Appendix B** in `06-graphics.md`.
+
+**Build-readiness**: all must-fix items above are now resolved → **cleared to implement
+M0 + M1.** Codex's recommended first chunks adopted:
+1. **M0** — scaffold + loop: package set, strict Vite/R3F app, `frameloop="never"`,
+   no-op sim, `bridge.sync(alpha)` + `advance(now)`, one interpolated cube; tests for
+   the accumulator + hitstop/slow-mo clock behavior.
+2. **M1 feel slice** — input buffer, one player + ball, shoot with pending impulse,
+   real-time hitstop countdown, ball blob shadow, camera shake/kick, audio unlock;
+   tests proving the ball stays frozen during hitstop then launches.
+
+## Next gates
+Codex reviews the M0/M1 implementation **plan**, then reviews Codex's own M0/M1 **code**,
+each independently verified by Claude (per the autonomous build loop).

@@ -69,7 +69,7 @@ each shippable, each leaving the game playable. Layers 2 + 3 + 7 together delive
 |---|-------|--------------|----------|
 | 1 | **Shapes that work** | Capsule players, sphere ball, plane pitch, flat colors, tilted camera. The locked MVP feel-loop. | zero |
 | 2 | **Lighting + shadows** | One directional "sun" + soft hemisphere fill. Grounds everything; ball shadow = height cue. | zero |
-| 3 | **Tone mapping** | ACES filmic + correct color space. Cinematic instead of washed-out. | ~1 line |
+| 3 | **Tone mapping** | AgX (base) + correct color space. Cinematic instead of washed-out. | ~1 line |
 | 4 | **PBR + environment** | `MeshStandardMaterial`, `<Environment>`, grass texture w/ mowed stripes. | low |
 | 5 | **Real models** | Low-poly rigged players (Synty/Quaternius) via glTF; recolor for kits. | medium |
 | 6 | **Animation** | Idle/run/kick/tackle blended by player state (AnimationMixer). | medium |
