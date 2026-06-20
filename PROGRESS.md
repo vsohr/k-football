@@ -49,8 +49,69 @@ asset pipeline, determinism caveat, feel event schema, feel dev-tooling into M1.
 keep going until done." Remote: github.com/vsohr/k-football (gh authed). main + spec
 pushed.
 
-## Next steps
-1. Round-2 Codex review of full expanded spec (incl. graphics) — IN PROGRESS.
-2. Incorporate, merge spec → main, push.
-3. Build worktree; M0 scaffold via Codex (TDD) → review → commit/push; then M1...M3b,
-   then graphics M4-M7. Codex codes, Claude reviews each chunk.
+## Build status (branch build/mvp)
+- [x] Round-2 Codex review done; spec merged to main + pushed.
+- [x] M0 scaffold (Vite7/R3F9/React19/strict TS/Vitest); deps pinned; build+typecheck green.
+- [x] M0 core (Codex, TDD): loop/time/rng/world/sim/index barrel; 22 tests; Claude-reviewed.
+- [x] M0 render shell (me): GameCanvas frameloop=never + manual driver (loop.advance →
+      bridge.sync interpolation → r3fAdvance), tilted perspective cam, AgX, sun+hemisphere,
+      shadowed pitch, interpolated ball.
+- [x] M0 verified: headless screenshot = lit pitch + ball + drop shadow; ball moves
+      (loop running). typecheck/test/lint/build green.
+
+- [x] M1.1 (Codex sim + my render): input source/buffer/intent, config, Player, input+
+      movement systems; DOM listener, player capsule/ring/pip, angle interp. 32 tests.
+- [x] M1.2 (Codex): ball possession/dribble/pickup/drag/bounce; actionSystem SHOOT ->
+      deferred impulse + 'shoot' event + pendingHitstopFrames; loop stops stepping when
+      hitstop activates. 46 tests incl. deferred-impulse integration test (PROVEN).
+- [x] M1.3-core+squash (me): FeelController (trauma shake + camera kick + flash + squash,
+      real-time decay), procedural WebAudio AudioBus (shot thump + autoplay unlock),
+      GameCanvas wires hitstop-request + event drain -> shake/kick/audio/squash + camera
+      shake. typecheck/46 tests/lint/build green; headless render verified.
+- [~] M1.4 leva tuning panel: DEFERRED (dev-tooling, non-blocking).
+- [ ] FEEL GATE pt1 = HUMAN PLAYTEST (spec AC §P1): does the shot THUMP? `npm run dev`,
+      WASD to move/dribble, J/Space to shoot. Audio needs the first keypress (unlock).
+
+## Verification method
+Headless: `npm run build` + `vite preview --port 4173` + google-chrome-stable
+--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot. The
+render is rAF-driven so screenshots are FLAKY — many come back blank (4718 bytes = blank);
+~6000ms virtual-time-budget lands a rendered frame most reliably; reshoot until size >
+~9KB. No Playwright yet (add at E2E milestone). Feel (audio/hitstop) can't be judged
+headlessly — needs a human at `npm run dev`.
+
+## Architecture notes for resume
+- Sim is pure (src/game/**, no three/react). Render is src/render/**. Hard seam.
+- Loop: frameloop="never" + manual rAF in GameDriver: loop.advance(realDt) -> drain
+  world.events -> bridge.sync interpolation -> camera shake -> r3fAdvance(now).
+- Hitstop: sim sets world.pendingHitstopFrames; render closure calls requestHitstop(time)
+  synchronously so the loop freezes before the ball launches (deferred impulse).
+- facing convention: atan2(moveX,moveZ), 0=+Z, dir=(sin,cos). Render rotation.y=facing.
+- Division of labor: Codex does sim/logic (TDD), Claude does R3F/UI + reviews Codex.
+
+## DONE since: M2 + M3a (all pushed, green)
+- M2a roster+formations+dummy movement+auto-switch + HUD (55 tests)
+- M2b assisted lead pass + clean/whiff tackle + feel (63 tests)
+- M2c swept collision + goal detection + match FSM + Field(goals/boards) + camera framing
+  + goal feel/toasts (74 tests)
+- M3a keeper system (SET/COMMIT/RECOVER, catch/parry, distribute) + goal cinematic
+  (confetti + camera push-in) (81 tests). Confetti render verified headlessly.
+- Camera widened to [0,32,19] fov46 to frame whole pitch + both goals.
+
+## DONE: M3b opponent AI (95 tests) — MVP MECHANICALLY COMPLETE
+action.ts -> perform{Shoot,Pass,Tackle} shared by human+AI; config/ai.ts; aiSystem
+(chaser+hysteresis, press/tackle zones, support runs, defend shape, on-ball shoot/pass/
+dribble, rng noise, deterministic); movement uses aiMove (speedFactor). Long-sim test
+proves live play (players move/contest, no swarm/freeze, in-bounds).
+MVP = 5v5 + single match + human vs AI + 4 actions + keeper + scoreboard/timer + AI +
+formations + core feel — ALL on primitives, green. FEEL GATE = human playtest (npm run dev).
+
+## HEADLESS VERIFY NOTE
+Virtual-time chrome can't advance the rAF sim past kickoff (loop clamps dt + caps 5
+steps/frame; few rAF callbacks). Screenshots show static scenes; the deterministic sim
+tests are the authoritative behavior verification. Feel/AI-in-motion = real browser.
+
+## After M3b
+Verify AI plays a live match headlessly (run sim ~6s, screenshot — players should contest,
+not hold formation). Then FEEL GATE playtest (npm run dev). Then graphics M4-M7
+(per 06-graphics.md: lighting/shadows/AgX -> PBR/pitch -> models/anim -> post/VFX/stadium).
