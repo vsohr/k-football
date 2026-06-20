@@ -27,6 +27,10 @@ interface WorldSnapshot {
     keeperState: KeeperState;
     keeperTimer: number;
     holdTimer: number;
+    aiMoveX: number;
+    aiMoveZ: number;
+    aiSprint: boolean;
+    decisionTimer: number;
   }>;
   controlledId: number;
   intent: {
@@ -57,6 +61,7 @@ interface WorldSnapshot {
   eventsLength: number;
   pendingHitstopFrames: number;
   switchCooldown: number;
+  chaser: [number, number];
   rngDraws: number[];
 }
 
@@ -87,6 +92,10 @@ function snapshotWorld(world: World): WorldSnapshot {
       keeperState: player.keeperState,
       keeperTimer: player.keeperTimer,
       holdTimer: player.holdTimer,
+      aiMoveX: player.aiMoveX,
+      aiMoveZ: player.aiMoveZ,
+      aiSprint: player.aiSprint,
+      decisionTimer: player.decisionTimer,
     })),
     controlledId: world.controlledId,
     intent: { ...world.intent },
@@ -95,6 +104,7 @@ function snapshotWorld(world: World): WorldSnapshot {
     eventsLength: world.events.length,
     pendingHitstopFrames: world.pendingHitstopFrames,
     switchCooldown: world.switchCooldown,
+    chaser: [...world.chaser],
     rngDraws: [world.rng.next(), world.rng.next(), world.rng.next()],
   };
 }
@@ -116,6 +126,7 @@ describe('world state', () => {
     expect(first.ball.cooldown).toBe(0);
     expect(first.pendingHitstopFrames).toBe(0);
     expect(first.switchCooldown).toBe(0);
+    expect(first.chaser).toEqual([-1, -1]);
     expect(first.players).toHaveLength(10);
     expect(first.players.filter((player) => player.team === 0)).toHaveLength(5);
     expect(first.players.filter((player) => player.team === 1)).toHaveLength(5);
@@ -141,6 +152,10 @@ describe('world state', () => {
           keeperState: 'SET',
           keeperTimer: 0,
           holdTimer: 0,
+          aiMoveX: 0,
+          aiMoveZ: 0,
+          aiSprint: false,
+          decisionTimer: 0,
         });
       }
     }
@@ -162,6 +177,8 @@ describe('world state', () => {
     world.ball.pendingImpulse = { x: 3, y: 0, z: 4 };
     world.ball.cooldown = 12;
     world.switchCooldown = 9;
+    world.chaser[0] = 1;
+    world.chaser[1] = 8;
     world.players[0].pos.x = 12;
     world.players[0].vel.z = 7;
     world.players[0].facing = 3;
@@ -169,6 +186,10 @@ describe('world state', () => {
     world.players[0].keeperState = 'RECOVER';
     world.players[0].keeperTimer = 12;
     world.players[0].holdTimer = 8;
+    world.players[0].aiMoveX = 1;
+    world.players[0].aiMoveZ = -1;
+    world.players[0].aiSprint = true;
+    world.players[0].decisionTimer = 5;
     world.players[0].control = 'human';
     world.players[3].control = 'ai';
     world.controlledId = 0;

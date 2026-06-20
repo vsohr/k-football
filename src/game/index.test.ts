@@ -1,6 +1,7 @@
 import {
   BALL_RADIUS,
   BALL,
+  AI,
   BINDINGS,
   DRIBBLE,
   FEEL,
@@ -15,6 +16,7 @@ import {
   TACKLE,
   FORMATION_2_2,
   actionSystem,
+  aiSystem,
   anchorFor,
   ballSystem,
   consumeAction,
@@ -27,6 +29,9 @@ import {
   keeperSystem,
   matchSystem,
   movementSystem,
+  performPass,
+  performShoot,
+  performTackle,
   pressAction,
   requestHitstop,
   resetWorld,
@@ -78,6 +83,7 @@ describe('game public API', () => {
     switchSystem(world);
     movementSystem(world, 0);
     ballSystem(world, 0);
+    aiSystem(world, 0);
     actionSystem(world, 0);
     keeperSystem(world, 0);
     matchSystem(world, 0);
@@ -106,6 +112,7 @@ describe('game public API', () => {
     expect(MOVE.maxSpeed).toBe(8);
     expect(MATCH.halfLengthSec).toBe(120);
     expect(BALL.shotSpeed).toBe(22);
+    expect(AI.speedFactor).toBeLessThanOrEqual(1);
     expect(KEEPER.reach).toBe(2.2);
     expect(DRIBBLE.distance).toBe(0.9);
     expect(PASS.speed).toBe(16);
@@ -116,5 +123,8 @@ describe('game public API', () => {
     expect(BINDINGS.KeyW).toBe('up');
     expect(SHOOT_BUFFER_TICKS).toBe(6);
     expect(result.steps).toBe(0);
+    expect(typeof performPass(world, player, false)).toBe('boolean');
+    expect(() => performShoot(world, player, 0.5)).not.toThrow();
+    expect(performTackle(world, player)).toBe('whiff');
   });
 });

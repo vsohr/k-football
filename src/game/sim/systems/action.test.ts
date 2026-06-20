@@ -2,7 +2,7 @@ import { FEEL, shootHitstopFrames } from '../../config/feel';
 import { BALL, DRIBBLE, PASS, TACKLE } from '../../config/pace';
 import { pressAction } from '../../input/source';
 import { createWorld, type Player, type World } from '../world';
-import { actionSystem } from './action';
+import { actionSystem, performPass, performShoot, performTackle } from './action';
 
 function getControlledPlayer(world: World): Player {
   const player = world.players.find((candidate) => candidate.id === world.controlledId);
@@ -47,6 +47,32 @@ function normalizeHorizontal(x: number, z: number): { x: number; z: number } {
 }
 
 describe('actionSystem', () => {
+  it('exposes the same shoot helper used by the controlled action path', () => {
+    const world = createWorld(101);
+    const player = getControlledPlayer(world);
+    player.facing = Math.PI / 2;
+    world.ball.owner = player.id;
+    world.ball.pos = { x: 2, y: 0, z: -1 };
+
+    performShoot(world, player);
+
+    expect(world.ball.owner).toBeNull();
+    expect(world.ball.pendingImpulse).toEqual({
+      x: BALL.shotSpeed,
+      y: 0,
+      z: expect.closeTo(0),
+    });
+    expect(world.pendingHitstopFrames).toBe(shootHitstopFrames(1));
+    expect(world.events).toEqual([
+      {
+        type: 'shoot',
+        tick: 0,
+        power: 1,
+        at: { x: 2, y: 0, z: -1 },
+      },
+    ]);
+  });
+
   it('shoots once when the controlled player owns the ball', () => {
     const world = createWorld(1);
     const player = getControlledPlayer(world);
@@ -137,6 +163,37 @@ describe('actionSystem', () => {
     expect(world.input.passBuf).toBe(0);
   });
 
+  it('can pass without switching human control for AI passers', () => {
+    const world = createWorld(102);
+    const originalControlledId = world.controlledId;
+    const passer = playerById(world, 8);
+    const receiver = playerById(world, 9);
+    movePlayer(passer, 0, 0);
+    movePlayer(receiver, -8, 1);
+    passer.facing = -Math.PI / 2;
+    world.ball.owner = passer.id;
+    world.ball.pos = { x: 0, y: 0, z: 0 };
+
+    const passed = performPass(world, passer, false);
+
+    expect(passed).toBe(true);
+    expect(world.controlledId).toBe(originalControlledId);
+    expect(world.players.find((player) => player.id === originalControlledId)?.control).toBe(
+      'human',
+    );
+    expect(passer.control).toBe('ai');
+    expect(world.switchCooldown).toBe(0);
+    expect(world.ball.owner).toBeNull();
+    expect(world.ball.cooldown).toBe(PASS.cooldownTicks);
+    expect(world.events).toEqual([
+      {
+        type: 'pass',
+        tick: 0,
+        at: { x: 0, y: 0, z: 0 },
+      },
+    ]);
+  });
+
   it('does not pass or consume the buffer when the controlled player does not own the ball', () => {
     const world = createWorld(4);
     world.ball.owner = null;
@@ -199,6 +256,24 @@ describe('actionSystem', () => {
     ]);
     expect(world.input.tackleBuf).toBe(0);
   });
+
+  it('exposes tackle outcome for AI emergency challenges', () => {
+    const world = createWorld(103);
+    const tackler = playerById(world, 6);
+    const carrier = getControlledPlayer(world);
+    movePlayer(tackler, 0, 0);
+    movePlayer(carrier, 1, 0);
+    world.ball.owner = carrier.id;
+    world.ball.pos = { x: 1, y: 0, z: 0 };
+
+    const outcome = performTackle(world, tackler);
+
+    expect(outcome).toBe('clean');
+    expect(world.ball.owner).toBeNull();
+    expect(tackler.recoverFrames).toBe(TACKLE.cleanRecoverTicks);
+    expect(carrier.recoverFrames).toBe(TACKLE.cleanRecoverTicks + 4);
+  });
+
 
   it('whiffs an out-of-range tackle and leaves the ball unchanged', () => {
     const world = createWorld(7);

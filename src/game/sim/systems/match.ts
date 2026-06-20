@@ -31,6 +31,10 @@ function resetPlayerForKickoff(player: Player): void {
   player.keeperState = 'SET';
   player.keeperTimer = 0;
   player.holdTimer = 0;
+  player.aiMoveX = 0;
+  player.aiMoveZ = 0;
+  player.aiSprint = false;
+  player.decisionTimer = 0;
 }
 
 export function resetForKickoff(world: World): void {
@@ -46,6 +50,8 @@ export function resetForKickoff(world: World): void {
   world.ball.cooldown = 0;
   world.ball.pendingImpulse = null;
   world.switchCooldown = 0;
+  world.chaser[0] = -1;
+  world.chaser[1] = -1;
 }
 
 export function matchSystem(world: World, dt: number): void {

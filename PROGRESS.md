@@ -89,10 +89,29 @@ headlessly — needs a human at `npm run dev`.
 - facing convention: atan2(moveX,moveZ), 0=+Z, dir=(sin,cos). Render rotation.y=facing.
 - Division of labor: Codex does sim/logic (TDD), Claude does R3F/UI + reviews Codex.
 
-## Next: M2 — dummy players + pass + tackle + match structure
-Codex: full 5v5 roster as static/dummy bodies (hold anchors); pass (assisted+lead),
-tackle (clean/whiff+pop-loose), auto-switch, swept ball-vs-wall/goal-line + goal
-detection, match FSM (clock/halves/kickoff/goal->celebration->kickoff/full-time),
-per-action feel events. Me: more players render, HUD scoreboard/timer (zustand), toasts,
-pass/tackle feel channels. Then M3a (keeper+goal seq) -> M3b (opponent AI) -> graphics
-M4-M7. (Graphics gated behind M3b feel gate per roadmap.)
+## DONE since: M2 + M3a (all pushed, green)
+- M2a roster+formations+dummy movement+auto-switch + HUD (55 tests)
+- M2b assisted lead pass + clean/whiff tackle + feel (63 tests)
+- M2c swept collision + goal detection + match FSM + Field(goals/boards) + camera framing
+  + goal feel/toasts (74 tests)
+- M3a keeper system (SET/COMMIT/RECOVER, catch/parry, distribute) + goal cinematic
+  (confetti + camera push-in) (81 tests). Confetti render verified headlessly.
+- Camera widened to [0,32,19] fov46 to frame whole pitch + both goals.
+
+## DONE: M3b opponent AI (95 tests) — MVP MECHANICALLY COMPLETE
+action.ts -> perform{Shoot,Pass,Tackle} shared by human+AI; config/ai.ts; aiSystem
+(chaser+hysteresis, press/tackle zones, support runs, defend shape, on-ball shoot/pass/
+dribble, rng noise, deterministic); movement uses aiMove (speedFactor). Long-sim test
+proves live play (players move/contest, no swarm/freeze, in-bounds).
+MVP = 5v5 + single match + human vs AI + 4 actions + keeper + scoreboard/timer + AI +
+formations + core feel — ALL on primitives, green. FEEL GATE = human playtest (npm run dev).
+
+## HEADLESS VERIFY NOTE
+Virtual-time chrome can't advance the rAF sim past kickoff (loop clamps dt + caps 5
+steps/frame; few rAF callbacks). Screenshots show static scenes; the deterministic sim
+tests are the authoritative behavior verification. Feel/AI-in-motion = real browser.
+
+## After M3b
+Verify AI plays a live match headlessly (run sim ~6s, screenshot — players should contest,
+not hold formation). Then FEEL GATE playtest (npm run dev). Then graphics M4-M7
+(per 06-graphics.md: lighting/shadows/AgX -> PBR/pitch -> models/anim -> post/VFX/stadium).

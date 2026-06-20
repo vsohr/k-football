@@ -43,6 +43,10 @@ export interface Player {
   keeperState: KeeperState;
   keeperTimer: number;
   holdTimer: number;
+  aiMoveX: number;
+  aiMoveZ: number;
+  aiSprint: boolean;
+  decisionTimer: number;
 }
 
 export interface MatchState {
@@ -84,6 +88,7 @@ export interface World {
   events: FeelEvent[];
   pendingHitstopFrames: number;
   switchCooldown: number;
+  chaser: [number, number];
 }
 
 const CONTROLLED_HOME_ID = 3;
@@ -139,6 +144,10 @@ function createPlayer(slot: Slot, slotIndex: number, team: 0 | 1): Player {
     keeperState: 'SET',
     keeperTimer: 0,
     holdTimer: 0,
+    aiMoveX: 0,
+    aiMoveZ: 0,
+    aiSprint: false,
+    decisionTimer: 0,
   };
 }
 
@@ -194,6 +203,8 @@ function applyInitialState(world: World, seed: number): void {
   world.events.length = 0;
   world.pendingHitstopFrames = 0;
   world.switchCooldown = 0;
+  world.chaser[0] = -1;
+  world.chaser[1] = -1;
   initialSeeds.set(world, seed);
 }
 
@@ -225,6 +236,7 @@ export function createWorld(seed: number): World {
     events: [],
     pendingHitstopFrames: 0,
     switchCooldown: 0,
+    chaser: [-1, -1],
   };
 
   initialSeeds.set(world, seed);

@@ -159,6 +159,12 @@ describe('matchSystem phase machine', () => {
     setVec3(player.pos, player.anchor.x + 3, 0, player.anchor.z + 2);
     setVec3(player.vel, 2, 0, 1);
     player.recoverFrames = 5;
+    player.aiMoveX = 1;
+    player.aiMoveZ = -1;
+    player.aiSprint = true;
+    player.decisionTimer = 4;
+    world.chaser[0] = 1;
+    world.chaser[1] = 8;
     setVec3(world.ball.pos, PITCH.halfX + 1, 0, 0);
     setVec3(world.ball.vel, 10, 0, 0);
     world.ball.owner = player.id;
@@ -172,12 +178,17 @@ describe('matchSystem phase machine', () => {
     expect(player.pos).toEqual(player.anchor);
     expect(player.vel).toEqual({ x: 0, y: 0, z: 0 });
     expect(player.recoverFrames).toBe(0);
+    expect(player.aiMoveX).toBe(0);
+    expect(player.aiMoveZ).toBe(0);
+    expect(player.aiSprint).toBe(false);
+    expect(player.decisionTimer).toBe(0);
     expect(player.facing).toBe(Math.PI / 2);
     expect(world.ball.pos).toEqual({ x: 0, y: 0, z: 0 });
     expect(world.ball.vel).toEqual({ x: 0, y: 0, z: 0 });
     expect(world.ball.owner).toBeNull();
     expect(world.ball.pendingImpulse).toBeNull();
     expect(world.ball.cooldown).toBe(0);
+    expect(world.chaser).toEqual([-1, -1]);
   });
 });
 

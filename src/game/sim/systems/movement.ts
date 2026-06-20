@@ -1,9 +1,7 @@
+import { AI } from '../../config/ai';
 import { PITCH, PLAYER_RADIUS } from '../../config/dimensions';
 import { MOVE } from '../../config/pace';
 import type { Player, Vec3, World } from '../world';
-
-const ARRIVAL_RADIUS = 2;
-const ANCHOR_STOP_RADIUS = 0.15;
 
 function copyVec3(target: Vec3, source: Vec3): void {
   target.x = source.x;
@@ -116,7 +114,7 @@ export function movementSystem(world: World, dt: number): void {
     if (player.id === world.controlledId) {
       movePlayer(player, world.intent.moveX, world.intent.moveZ, world.intent.sprint, dt);
     } else {
-      moveAiPlayer(player, dt);
+      movePlayer(player, player.aiMoveX, player.aiMoveZ, player.aiSprint, dt, AI.speedFactor);
     }
   }
 }
@@ -136,6 +134,7 @@ function movePlayer(
   inputZ: number,
   sprint: boolean,
   dt: number,
+  speedFactor = 1,
 ): void {
   let dirX = inputX;
   let dirZ = inputZ;
@@ -147,7 +146,7 @@ function movePlayer(
   }
 
   if (dirLen > 0) {
-    const maxSpeed = sprint ? MOVE.sprintMaxSpeed : MOVE.maxSpeed;
+    const maxSpeed = (sprint ? MOVE.sprintMaxSpeed : MOVE.maxSpeed) * speedFactor;
     moveVelocityToward(player.vel, dirX * maxSpeed, dirZ * maxSpeed, MOVE.accel * dt);
     capHorizontalSpeed(player.vel, maxSpeed);
     player.facing = slewAngle(
@@ -164,51 +163,4 @@ function movePlayer(
   player.pos.z += player.vel.z * dt;
   player.vel.y = 0;
   clampPlayerToPitch(player.pos, player.vel);
-}
-
-function moveAiPlayer(player: Player, dt: number): void {
-  const toAnchorX = player.anchor.x - player.pos.x;
-  const toAnchorZ = player.anchor.z - player.pos.z;
-  const distance = Math.hypot(toAnchorX, toAnchorZ);
-
-  if (distance <= ANCHOR_STOP_RADIUS) {
-    movePlayer(player, 0, 0, false, dt);
-    snapIfSettled(player);
-    return;
-  }
-
-  const arrivalScale = Math.min(1, distance / ARRIVAL_RADIUS);
-  const dirX = (toAnchorX / distance) * arrivalScale;
-  const dirZ = (toAnchorZ / distance) * arrivalScale;
-
-  movePlayer(player, dirX, dirZ, false, dt);
-  snapIfOvershotAnchor(player, toAnchorX, toAnchorZ, distance);
-}
-
-function snapIfSettled(player: Player): void {
-  const distance = Math.hypot(player.anchor.x - player.pos.x, player.anchor.z - player.pos.z);
-
-  if (distance <= ANCHOR_STOP_RADIUS && Math.hypot(player.vel.x, player.vel.z) === 0) {
-    copyVec3(player.pos, player.anchor);
-    player.vel.x = 0;
-    player.vel.z = 0;
-  }
-}
-
-function snapIfOvershotAnchor(
-  player: Player,
-  previousToAnchorX: number,
-  previousToAnchorZ: number,
-  previousDistance: number,
-): void {
-  const nextToAnchorX = player.anchor.x - player.pos.x;
-  const nextToAnchorZ = player.anchor.z - player.pos.z;
-  const crossedAnchor =
-    previousToAnchorX * nextToAnchorX + previousToAnchorZ * nextToAnchorZ <= 0;
-
-  if (crossedAnchor && previousDistance <= ARRIVAL_RADIUS) {
-    copyVec3(player.pos, player.anchor);
-    player.vel.x = 0;
-    player.vel.z = 0;
-  }
 }

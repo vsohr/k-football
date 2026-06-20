@@ -1,4 +1,5 @@
 import { PITCH, PLAYER_RADIUS } from '../../config/dimensions';
+import { AI } from '../../config/ai';
 import { MOVE } from '../../config/pace';
 import type { InputIntent } from '../../input/source';
 import { createWorld, type Player, type World } from '../world';
@@ -97,43 +98,50 @@ describe('movementSystem', () => {
     expect(player.vel.x).toBe(0);
   });
 
-  it('moves every dummy back toward its anchor and settles without jitter', () => {
+  it('moves AI outfield players from aiMove and caps them below human max speed', () => {
     const world = createWorld(6);
-    const dummy = world.players.find(
+    const aiPlayer = world.players.find(
       (player) => player.team === 0 && player.id !== world.controlledId && player.role === 'DEF',
     );
 
-    if (dummy === undefined) {
-      throw new Error('missing home defender dummy');
+    if (aiPlayer === undefined) {
+      throw new Error('missing home defender AI');
     }
 
-    dummy.pos.x = dummy.anchor.x + 5;
-    dummy.pos.z = dummy.anchor.z;
-    dummy.prevPos.x = dummy.pos.x;
-    dummy.prevPos.z = dummy.pos.z;
+    aiPlayer.aiMoveX = 1;
+    aiPlayer.aiMoveZ = 0;
+    aiPlayer.aiSprint = false;
+    const initialX = aiPlayer.pos.x;
 
-    const initialDistance = Math.hypot(dummy.pos.x - dummy.anchor.x, dummy.pos.z - dummy.anchor.z);
+    movementSystem(world, 1);
 
-    for (let i = 0; i < 180; i += 1) {
-      movementSystem(world, 1 / 60);
-    }
-
-    const settledDistance = Math.hypot(
-      dummy.pos.x - dummy.anchor.x,
-      dummy.pos.z - dummy.anchor.z,
+    expect(aiPlayer.pos.x).toBeGreaterThan(initialX);
+    expect(aiPlayer.vel.x).toBeCloseTo(MOVE.maxSpeed * AI.speedFactor);
+    expect(horizontalSpeed(aiPlayer.vel.x, aiPlayer.vel.z)).toBeLessThanOrEqual(
+      MOVE.maxSpeed * AI.speedFactor,
     );
-    expect(settledDistance).toBeLessThan(initialDistance);
-    expect(settledDistance).toBeLessThan(0.16);
-    expect(horizontalSpeed(dummy.vel.x, dummy.vel.z)).toBeLessThan(0.2);
+  });
 
-    for (let i = 0; i < 30; i += 1) {
-      movementSystem(world, 1 / 60);
+  it('uses the sprint cap for AI outfield players when aiSprint is selected', () => {
+    const world = createWorld(16);
+    const aiPlayer = world.players.find(
+      (player) => player.team === 1 && player.role === 'FWD',
+    );
+
+    if (aiPlayer === undefined) {
+      throw new Error('missing away forward AI');
     }
 
-    expect(Math.hypot(dummy.pos.x - dummy.anchor.x, dummy.pos.z - dummy.anchor.z)).toBeLessThan(
-      0.16,
+    aiPlayer.aiMoveX = -1;
+    aiPlayer.aiMoveZ = 0;
+    aiPlayer.aiSprint = true;
+
+    movementSystem(world, 1);
+
+    expect(horizontalSpeed(aiPlayer.vel.x, aiPlayer.vel.z)).toBeCloseTo(
+      MOVE.sprintMaxSpeed * AI.speedFactor,
     );
-    expect(horizontalSpeed(dummy.vel.x, dummy.vel.z)).toBeLessThan(0.05);
+    expect(aiPlayer.vel.x).toBeLessThan(-MOVE.maxSpeed * AI.speedFactor);
   });
 
   it('keeps all players inside the pitch', () => {

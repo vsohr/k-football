@@ -21,22 +21,25 @@ export function actionSystem(world: World, _dt: number): void {
   const ownsBall = world.ball.owner === player.id;
 
   if (world.intent.shoot && ownsBall) {
-    shoot(world, player);
+    performShoot(world, player);
+    consumeAction(world.input, 'shoot');
     return;
   }
 
   if (world.intent.pass && ownsBall && !world.intent.shoot && player.recoverFrames === 0) {
-    pass(world, player);
+    if (performPass(world, player)) {
+      consumeAction(world.input, 'pass');
+    }
     return;
   }
 
   if (world.intent.tackle && !ownsBall && player.recoverFrames === 0) {
-    tackle(world, player);
+    performTackle(world, player);
+    consumeAction(world.input, 'tackle');
   }
 }
 
-function shoot(world: World, player: Player): void {
-  const power = 1;
+export function performShoot(world: World, player: Player, power = 1): void {
   const dirX = Math.sin(player.facing);
   const dirZ = Math.cos(player.facing);
 
@@ -54,22 +57,34 @@ function shoot(world: World, player: Player): void {
     power,
     at: { ...world.ball.pos },
   });
-  consumeAction(world.input, 'shoot');
 }
 
-function pass(world: World, player: Player): void {
+export function performPass(
+  world: World,
+  player: Player,
+  switchControl = true,
+  lateralAimNoise = 0,
+): boolean {
   const target = selectPassTarget(world, player);
 
   if (target === undefined) {
-    return;
+    return false;
   }
 
-  const aimX = target.pos.x + target.vel.x * PASS.leadTime;
-  const aimZ = target.pos.z + target.vel.z * PASS.leadTime;
+  const baseAimX = target.pos.x + target.vel.x * PASS.leadTime;
+  const baseAimZ = target.pos.z + target.vel.z * PASS.leadTime;
+  const baseDir = directionFromDelta(baseAimX - player.pos.x, baseAimZ - player.pos.z);
+
+  if (baseDir === undefined) {
+    return false;
+  }
+
+  const aimX = baseAimX - baseDir.z * lateralAimNoise;
+  const aimZ = baseAimZ + baseDir.x * lateralAimNoise;
   const dir = directionFromDelta(aimX - player.pos.x, aimZ - player.pos.z);
 
   if (dir === undefined) {
-    return;
+    return false;
   }
 
   const distance = Math.hypot(aimX - player.pos.x, aimZ - player.pos.z);
@@ -81,19 +96,21 @@ function pass(world: World, player: Player): void {
   world.ball.pendingImpulse = null;
   world.ball.owner = null;
   world.ball.cooldown = PASS.cooldownTicks;
-  world.controlledId = target.id;
-  world.switchCooldown = PASS_SWITCH_COOLDOWN_TICKS;
-  updateControlFlags(world);
+  if (switchControl) {
+    world.controlledId = target.id;
+    world.switchCooldown = PASS_SWITCH_COOLDOWN_TICKS;
+    updateControlFlags(world);
+  }
   world.pendingHitstopFrames = FEEL.pass.hitstopFrames;
   world.events.push({
     type: 'pass',
     tick: world.tick,
     at: { ...world.ball.pos },
   });
-  consumeAction(world.input, 'pass');
+  return true;
 }
 
-function tackle(world: World, player: Player): void {
+export function performTackle(world: World, player: Player): 'clean' | 'whiff' {
   const carrier = findTackleCarrier(world, player);
 
   if (carrier === undefined) {
@@ -104,8 +121,7 @@ function tackle(world: World, player: Player): void {
       tick: world.tick,
       at: { ...player.pos },
     });
-    consumeAction(world.input, 'tackle');
-    return;
+    return 'whiff';
   }
 
   const popDir =
@@ -127,7 +143,7 @@ function tackle(world: World, player: Player): void {
     tick: world.tick,
     at: { ...world.ball.pos },
   });
-  consumeAction(world.input, 'tackle');
+  return 'clean';
 }
 
 function updateControlFlags(world: World): void {
