@@ -59,14 +59,40 @@ pushed.
 - [x] M0 verified: headless screenshot = lit pitch + ball + drop shadow; ball moves
       (loop running). typecheck/test/lint/build green.
 
-## Verification method
-Headless: `npm run build` + `vite preview` + google-chrome-stable --headless=new
---use-angle=swiftshader --screenshot. First shot can be a blank rAF-timing flake — reshoot.
-No Playwright yet (add at E2E milestone).
+- [x] M1.1 (Codex sim + my render): input source/buffer/intent, config, Player, input+
+      movement systems; DOM listener, player capsule/ring/pip, angle interp. 32 tests.
+- [x] M1.2 (Codex): ball possession/dribble/pickup/drag/bounce; actionSystem SHOOT ->
+      deferred impulse + 'shoot' event + pendingHitstopFrames; loop stops stepping when
+      hitstop activates. 46 tests incl. deferred-impulse integration test (PROVEN).
+- [x] M1.3-core+squash (me): FeelController (trauma shake + camera kick + flash + squash,
+      real-time decay), procedural WebAudio AudioBus (shot thump + autoplay unlock),
+      GameCanvas wires hitstop-request + event drain -> shake/kick/audio/squash + camera
+      shake. typecheck/46 tests/lint/build green; headless render verified.
+- [~] M1.4 leva tuning panel: DEFERRED (dev-tooling, non-blocking).
+- [ ] FEEL GATE pt1 = HUMAN PLAYTEST (spec AC §P1): does the shot THUMP? `npm run dev`,
+      WASD to move/dribble, J/Space to shoot. Audio needs the first keypress (unlock).
 
-## Next: M1 — feel loop on primitives (THE heart)
-Input manager+buffer; one human player + ball dribble; SHOOT via deferred-impulse +
-feel-system core (hitstop/shake/camera-kick/audio-unlock/trail/squash) + ball blob
-shadow + leva feel panel. TDD; Codex for sim/feel logic, me for R3F/UI; commit+push per
-chunk. Then M2 (dummy players + actions + match) → M3a (keeper+goal) → M3b (AI) →
-graphics M4-M7.
+## Verification method
+Headless: `npm run build` + `vite preview --port 4173` + google-chrome-stable
+--headless=new --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot. The
+render is rAF-driven so screenshots are FLAKY — many come back blank (4718 bytes = blank);
+~6000ms virtual-time-budget lands a rendered frame most reliably; reshoot until size >
+~9KB. No Playwright yet (add at E2E milestone). Feel (audio/hitstop) can't be judged
+headlessly — needs a human at `npm run dev`.
+
+## Architecture notes for resume
+- Sim is pure (src/game/**, no three/react). Render is src/render/**. Hard seam.
+- Loop: frameloop="never" + manual rAF in GameDriver: loop.advance(realDt) -> drain
+  world.events -> bridge.sync interpolation -> camera shake -> r3fAdvance(now).
+- Hitstop: sim sets world.pendingHitstopFrames; render closure calls requestHitstop(time)
+  synchronously so the loop freezes before the ball launches (deferred impulse).
+- facing convention: atan2(moveX,moveZ), 0=+Z, dir=(sin,cos). Render rotation.y=facing.
+- Division of labor: Codex does sim/logic (TDD), Claude does R3F/UI + reviews Codex.
+
+## Next: M2 — dummy players + pass + tackle + match structure
+Codex: full 5v5 roster as static/dummy bodies (hold anchors); pass (assisted+lead),
+tackle (clean/whiff+pop-loose), auto-switch, swept ball-vs-wall/goal-line + goal
+detection, match FSM (clock/halves/kickoff/goal->celebration->kickoff/full-time),
+per-action feel events. Me: more players render, HUD scoreboard/timer (zustand), toasts,
+pass/tackle feel channels. Then M3a (keeper+goal seq) -> M3b (opponent AI) -> graphics
+M4-M7. (Graphics gated behind M3b feel gate per roadmap.)
