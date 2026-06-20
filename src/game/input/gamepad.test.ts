@@ -40,6 +40,26 @@ describe('gamepad input mapping', () => {
     expect(input.switchBuf).toBe(SHOOT_BUFFER_TICKS);
   });
 
+  it('does not switch when Y is held through a possession flip; only on a fresh press', () => {
+    const input = createInputSource();
+    const yIndex = XBOX_BUTTON.y;
+    const held = Array.from({ length: yIndex + 1 }, (_, i) => i === yIndex);
+    const released = Array.from({ length: yIndex + 1 }, () => false);
+
+    // Press Y while in possession -> no switch; carry the button state forward.
+    let prev = applyGamepad(input, { axes: [], buttons: held }, [], { inPossession: true });
+    expect(input.switchBuf).toBe(0);
+
+    // Y still held, possession flips to out -> no rising edge, still no switch.
+    prev = applyGamepad(input, { axes: [], buttons: held }, prev, { inPossession: false });
+    expect(input.switchBuf).toBe(0);
+
+    // Release, then a fresh press while out of possession -> switch fires.
+    prev = applyGamepad(input, { axes: [], buttons: released }, prev, { inPossession: false });
+    applyGamepad(input, { axes: [], buttons: held }, prev, { inPossession: false });
+    expect(input.switchBuf).toBe(SHOOT_BUFFER_TICKS);
+  });
+
   it('does not fire actions when the same button stays held', () => {
     const input = createInputSource();
     const buttons = [true, true, false, true];

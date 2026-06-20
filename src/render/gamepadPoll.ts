@@ -1,4 +1,7 @@
-import { applyGamepad, type GamepadSnapshot, type World } from '@/game';
+import { applyGamepad, setMove, setSprint, type GamepadSnapshot, type World } from '@/game';
+
+// Shared empty snapshot returned when no pad is present (avoids per-frame allocation).
+const NO_BUTTONS: boolean[] = [];
 
 /** The human always controls the home side (team 0). */
 export function homeTeamInPossession(world: World): boolean {
@@ -10,38 +13,35 @@ export function homeTeamInPossession(world: World): boolean {
   return carrier?.team === 0;
 }
 
-/** Read the active standard-mapping gamepad into a plain, sim-friendly snapshot. */
+/**
+ * Read the active W3C "standard"-mapping gamepad into a plain, sim-friendly snapshot.
+ * Non-standard pads are ignored because the button/axis indices assume the standard
+ * layout, and `getGamepads()` slots can be null/undefined (sparse array).
+ */
 export function readGamepadSnapshot(): GamepadSnapshot | null {
   if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') {
     return null;
   }
 
-  let chosen: Gamepad | null = null;
   for (const pad of navigator.getGamepads()) {
-    if (pad === null) {
+    if (!pad || pad.mapping !== 'standard') {
       continue;
     }
-    if (pad.mapping === 'standard') {
-      chosen = pad;
-      break;
-    }
-    chosen ??= pad;
+    return {
+      axes: pad.axes,
+      buttons: pad.buttons.map((button) => button.pressed),
+    };
   }
 
-  if (chosen === null) {
-    return null;
-  }
-
-  return {
-    axes: chosen.axes,
-    buttons: chosen.buttons.map((button) => button.pressed),
-  };
+  return null;
 }
 
 /**
  * Per-frame gamepad poll (presentation glue): reads the pad, unlocks audio on the first
  * button press, and maps it onto the sim's InputSource via the pure `applyGamepad`.
- * Returns the button snapshot to thread back in as `prevButtons` next frame.
+ * Returns the button snapshot to thread back in as `prevButtons` next frame. When a pad
+ * is connected it owns movement/sprint; on disconnect those are cleared once so input
+ * does not stick (keyboard resumes on its next event).
  */
 export function pollGamepad(
   world: World,
@@ -50,7 +50,11 @@ export function pollGamepad(
 ): boolean[] {
   const snapshot = readGamepadSnapshot();
   if (snapshot === null) {
-    return prevButtons;
+    if (prevButtons.length > 0) {
+      setMove(world.input, 0, 0);
+      setSprint(world.input, false);
+    }
+    return NO_BUTTONS;
   }
 
   if (onActivate !== undefined) {

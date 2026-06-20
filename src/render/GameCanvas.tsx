@@ -117,7 +117,7 @@ function GameDriver({ model }: { model: GameModel }) {
             break;
           }
           case 'pass':
-            feel.addTrauma(0.04);
+            // Screen shake is reserved for shooting; the pass keeps only its SFX.
             audio.pass();
             break;
           case 'tackleClean':
@@ -186,7 +186,8 @@ function GameDriver({ model }: { model: GameModel }) {
         const dx = bx - last.x;
         const dz = bz - last.z;
         const dist = Math.hypot(dx, dz);
-        if (dist > 1e-4 && ballRef.current) {
+        // Skip teleports (kickoff/goal reset) so the ball doesn't add a bogus spin step.
+        if (dist > 1e-4 && dist < 3 && ballRef.current) {
           ROLL_AXIS.set(dz, 0, -dx).normalize();
           ROLL_DELTA.setFromAxisAngle(ROLL_AXIS, dist / BALL_RENDER_RADIUS);
           ballSpin.current.premultiply(ROLL_DELTA);
