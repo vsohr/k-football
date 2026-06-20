@@ -7,7 +7,31 @@ Built with React Three Fiber (low-poly 3D, near-top-down camera) and engineered
 around **game feel** — hitstop, screen shake, particles, and a tight
 tension-and-release pace.
 
-> Status: **Specification phase.** See [`docs/spec/`](docs/spec/) for the full design.
+> Status: **Playable MVP.** Full 5v5 match vs AI, keeper, scoreboard/timer, the core
+> feel layer (hitstop / shake / squash / procedural SFX / goal confetti), and a
+> stylized-clean look (mowed-stripe pitch, glowing ball, bloom + tilt-shift + vignette,
+> soft shadows). See [`docs/spec/`](docs/spec/) for the full design.
+
+## Run it
+
+```bash
+npm install
+npm run dev        # play at the printed localhost URL
+npm test           # 95 deterministic sim tests
+npm run build      # static production bundle
+```
+
+**Controls:** Move `WASD`/arrows · Pass `J` · Shoot `K`/`Space` · Tackle `Shift` ·
+auto-switch to the nearest player · `Esc` to pause. Audio unlocks on the first keypress.
+
+## Architecture (built)
+
+A hard seam between a **pure, deterministic, fixed-step simulation** (`src/game/**` — no
+three.js/React imports, 95 unit tests) and **presentation** (`src/render/**`,
+`src/ui/**`). The R3F canvas runs `frameloop="never"`; one manual loop advances the
+fixed-step sim (real-time hitstop, slow-mo, interpolation), drains semantic feel events
+to the render channels, and calls R3F's `advance()` to render. Sim work was built with
+Codex under TDD and independently reviewed; rendering/UI hand-built.
 
 ## Documentation
 
@@ -20,6 +44,8 @@ tension-and-release pace.
 - [`docs/spec/06-graphics.md`](docs/spec/06-graphics.md) — art direction, rendering pipeline, VFX (research-backed)
 - [`docs/spec/99-review-log.md`](docs/spec/99-review-log.md) — Codex review gate + resolutions
 
-## Tech (planned)
+## Tech
 
-Vite · React · TypeScript · React Three Fiber · drei · @react-three/postprocessing · Rapier (physics) · Zustand (state)
+Vite 7 · React 19 · TypeScript (strict) · React Three Fiber 9 · drei · three 0.171 ·
+@react-three/postprocessing (bloom / tilt-shift / vignette / SMAA) · Zustand · Vitest.
+Physics is custom arcade kinematics (swept ball collision); no external 3D physics engine.
