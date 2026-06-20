@@ -1,25 +1,33 @@
 import { BALL_RADIUS, PITCH } from '../../config/dimensions';
 import { BALL, DRIBBLE } from '../../config/pace';
-import { createWorld, type Player } from '../world';
+import { createWorld, type Player, type World } from '../world';
 import { ballSystem } from './ball';
 
-function createAiPlayer(id: number, x: number, z: number): Player {
-  return {
-    id,
-    team: 1,
-    control: 'ai',
-    pos: { x, y: 0, z },
-    prevPos: { x, y: 0, z },
-    vel: { x: 0, y: 0, z: 0 },
-    facing: 0,
-    prevFacing: 0,
-  };
+function playerById(world: World, id: number): Player {
+  const player = world.players.find((candidate) => candidate.id === id);
+
+  if (player === undefined) {
+    throw new Error(`missing player ${id}`);
+  }
+
+  return player;
+}
+
+function getControlledPlayer(world: World): Player {
+  return playerById(world, world.controlledId);
+}
+
+function moveAllPlayersAway(world: World): void {
+  for (const player of world.players) {
+    player.pos.x = 10 + player.id;
+    player.pos.z = 10;
+  }
 }
 
 describe('ballSystem', () => {
   it('soft-attaches an owned ball in front of the owner each dribble tick', () => {
     const world = createWorld(1);
-    const owner = world.players[0];
+    const owner = getControlledPlayer(world);
     owner.pos.x = 2;
     owner.pos.z = 3;
     owner.vel.x = 1.5;
@@ -79,10 +87,13 @@ describe('ballSystem', () => {
 
   it('picks up a loose ball at cooldown zero and prefers the controlled player', () => {
     const world = createWorld(5);
-    const controlled = world.players[0];
+    const controlled = getControlledPlayer(world);
+    const opponent = playerById(world, 6);
+
     controlled.pos.x = 0.8;
     controlled.pos.z = 0;
-    world.players.push(createAiPlayer(1, 0.1, 0));
+    opponent.pos.x = 0.1;
+    opponent.pos.z = 0;
     world.ball.pos.x = 0;
     world.ball.pos.z = 0;
     world.ball.vel.x = 0;
@@ -96,9 +107,12 @@ describe('ballSystem', () => {
 
   it('picks up the nearest player when the controlled player is out of range', () => {
     const world = createWorld(6);
-    world.players[0].pos.x = 3;
-    world.players.push(createAiPlayer(4, 0.4, 0));
-    world.players.push(createAiPlayer(5, 0.2, 0));
+    moveAllPlayersAway(world);
+    playerById(world, world.controlledId).pos.x = 3;
+    playerById(world, 6).pos.x = 0.4;
+    playerById(world, 6).pos.z = 0;
+    playerById(world, 7).pos.x = 0.2;
+    playerById(world, 7).pos.z = 0;
     world.ball.pos.x = 0;
     world.ball.pos.z = 0;
     world.ball.vel.x = 0;
@@ -106,12 +120,12 @@ describe('ballSystem', () => {
 
     ballSystem(world, 0);
 
-    expect(world.ball.owner).toBe(5);
+    expect(world.ball.owner).toBe(7);
   });
 
   it('does not pick up a loose ball while cooldown remains active', () => {
     const world = createWorld(7);
-    const controlled = world.players[0];
+    const controlled = getControlledPlayer(world);
     controlled.pos.x = 0;
     controlled.pos.z = 0;
     world.ball.pos.x = 0;

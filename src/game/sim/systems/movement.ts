@@ -1,6 +1,9 @@
 import { PITCH, PLAYER_RADIUS } from '../../config/dimensions';
 import { MOVE } from '../../config/pace';
-import type { Vec3, World } from '../world';
+import type { Player, Vec3, World } from '../world';
+
+const ARRIVAL_RADIUS = 2;
+const ANCHOR_STOP_RADIUS = 0.15;
 
 function copyVec3(target: Vec3, source: Vec3): void {
   target.x = source.x;
@@ -96,17 +99,27 @@ function clampPlayerToPitch(pos: Vec3, vel: Vec3): void {
 }
 
 export function movementSystem(world: World, dt: number): void {
-  const player = world.players.find((candidate) => candidate.id === world.controlledId);
+  for (const player of world.players) {
+    copyVec3(player.prevPos, player.pos);
+    player.prevFacing = player.facing;
 
-  if (player === undefined) {
-    return;
+    if (player.id === world.controlledId) {
+      movePlayer(player, world.intent.moveX, world.intent.moveZ, world.intent.sprint, dt);
+    } else {
+      moveAiPlayer(player, dt);
+    }
   }
+}
 
-  copyVec3(player.prevPos, player.pos);
-  player.prevFacing = player.facing;
-
-  let dirX = world.intent.moveX;
-  let dirZ = world.intent.moveZ;
+function movePlayer(
+  player: Player,
+  inputX: number,
+  inputZ: number,
+  sprint: boolean,
+  dt: number,
+): void {
+  let dirX = inputX;
+  let dirZ = inputZ;
   const dirLen = Math.hypot(dirX, dirZ);
 
   if (dirLen > 1) {
@@ -115,13 +128,13 @@ export function movementSystem(world: World, dt: number): void {
   }
 
   if (dirLen > 0) {
-    const maxSpeed = world.intent.sprint ? MOVE.sprintMaxSpeed : MOVE.maxSpeed;
+    const maxSpeed = sprint ? MOVE.sprintMaxSpeed : MOVE.maxSpeed;
     moveVelocityToward(player.vel, dirX * maxSpeed, dirZ * maxSpeed, MOVE.accel * dt);
     capHorizontalSpeed(player.vel, maxSpeed);
     player.facing = slewAngle(
       player.facing,
       Math.atan2(dirX, dirZ),
-      (world.intent.sprint ? MOVE.sprintTurnRate : MOVE.turnRate) * dt,
+      (sprint ? MOVE.sprintTurnRate : MOVE.turnRate) * dt,
     );
   } else {
     applyFriction(player.vel, MOVE.friction * dt);
@@ -132,4 +145,51 @@ export function movementSystem(world: World, dt: number): void {
   player.pos.z += player.vel.z * dt;
   player.vel.y = 0;
   clampPlayerToPitch(player.pos, player.vel);
+}
+
+function moveAiPlayer(player: Player, dt: number): void {
+  const toAnchorX = player.anchor.x - player.pos.x;
+  const toAnchorZ = player.anchor.z - player.pos.z;
+  const distance = Math.hypot(toAnchorX, toAnchorZ);
+
+  if (distance <= ANCHOR_STOP_RADIUS) {
+    movePlayer(player, 0, 0, false, dt);
+    snapIfSettled(player);
+    return;
+  }
+
+  const arrivalScale = Math.min(1, distance / ARRIVAL_RADIUS);
+  const dirX = (toAnchorX / distance) * arrivalScale;
+  const dirZ = (toAnchorZ / distance) * arrivalScale;
+
+  movePlayer(player, dirX, dirZ, false, dt);
+  snapIfOvershotAnchor(player, toAnchorX, toAnchorZ, distance);
+}
+
+function snapIfSettled(player: Player): void {
+  const distance = Math.hypot(player.anchor.x - player.pos.x, player.anchor.z - player.pos.z);
+
+  if (distance <= ANCHOR_STOP_RADIUS && Math.hypot(player.vel.x, player.vel.z) === 0) {
+    copyVec3(player.pos, player.anchor);
+    player.vel.x = 0;
+    player.vel.z = 0;
+  }
+}
+
+function snapIfOvershotAnchor(
+  player: Player,
+  previousToAnchorX: number,
+  previousToAnchorZ: number,
+  previousDistance: number,
+): void {
+  const nextToAnchorX = player.anchor.x - player.pos.x;
+  const nextToAnchorZ = player.anchor.z - player.pos.z;
+  const crossedAnchor =
+    previousToAnchorX * nextToAnchorX + previousToAnchorZ * nextToAnchorZ <= 0;
+
+  if (crossedAnchor && previousDistance <= ARRIVAL_RADIUS) {
+    copyVec3(player.pos, player.anchor);
+    player.vel.x = 0;
+    player.vel.z = 0;
+  }
 }

@@ -9,6 +9,7 @@ import {
   shootTrauma,
   simulate,
   type Loop,
+  type MatchPhase,
   type TimeState,
   type World,
 } from '@/game';
@@ -16,6 +17,7 @@ import { lerp, lerpAngle } from './interpolate';
 import { usePlayerInput } from './useInput';
 import { FeelController } from './feel/FeelController';
 import { AudioBus } from './feel/AudioBus';
+import { useMetaStore } from '@/state/metaStore';
 
 /** Camera framing: near-top-down tilted perspective (~57° from horizontal), modest FOV (D6). */
 const CAMERA_POS: [number, number, number] = [0, 26, 15];
@@ -42,6 +44,13 @@ function GameDriver({ model }: { model: GameModel }) {
   const camera = useThree((s) => s.camera);
   const ballRef = useRef<THREE.Mesh>(null);
   const playerRefs = useRef<(THREE.Group | null)[]>([]);
+  const lastMeta = useRef<{
+    scoreHome: number;
+    scoreAway: number;
+    clockSec: number;
+    half: 1 | 2;
+    phase: MatchPhase;
+  }>({ scoreHome: -1, scoreAway: -1, clockSec: -1, half: 1, phase: 'PLAYING' });
 
   const unlockAudio = useCallback(() => audio.unlock(), [audio]);
   usePlayerInput(world.input, unlockAudio);
@@ -71,6 +80,33 @@ function GameDriver({ model }: { model: GameModel }) {
         }
       }
       world.events.length = 0;
+
+      // Sync match meta to the DOM HUD store, only when a displayed value changes
+      // (no per-frame React churn — tech §8).
+      const m = world.match;
+      const clockShown = Math.floor(m.clockSec);
+      if (
+        m.scoreHome !== lastMeta.current.scoreHome ||
+        m.scoreAway !== lastMeta.current.scoreAway ||
+        clockShown !== lastMeta.current.clockSec ||
+        m.half !== lastMeta.current.half ||
+        m.phase !== lastMeta.current.phase
+      ) {
+        lastMeta.current = {
+          scoreHome: m.scoreHome,
+          scoreAway: m.scoreAway,
+          clockSec: clockShown,
+          half: m.half,
+          phase: m.phase,
+        };
+        useMetaStore.getState().setMatch({
+          scoreHome: m.scoreHome,
+          scoreAway: m.scoreAway,
+          clockSec: clockShown,
+          half: m.half,
+          phase: m.phase,
+        });
+      }
 
       // bridge.sync(alpha): interpolate sim transforms onto mesh refs before render.
       const b = world.ball;

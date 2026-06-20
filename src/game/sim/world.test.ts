@@ -1,3 +1,4 @@
+import { FORMATION_2_2, anchorFor, type Role } from '../config/formations';
 import { createWorld, resetWorld, type World } from './world';
 
 interface WorldSnapshot {
@@ -13,7 +14,9 @@ interface WorldSnapshot {
   players: Array<{
     id: number;
     team: 0 | 1;
+    role: Role;
     control: 'human' | 'ai';
+    anchor: { x: number; y: number; z: number };
     pos: { x: number; y: number; z: number };
     prevPos: { x: number; y: number; z: number };
     vel: { x: number; y: number; z: number };
@@ -46,6 +49,7 @@ interface WorldSnapshot {
   };
   eventsLength: number;
   pendingHitstopFrames: number;
+  switchCooldown: number;
   rngDraws: number[];
 }
 
@@ -64,7 +68,9 @@ function snapshotWorld(world: World): WorldSnapshot {
     players: world.players.map((player) => ({
       id: player.id,
       team: player.team,
+      role: player.role,
       control: player.control,
+      anchor: { ...player.anchor },
       pos: { ...player.pos },
       prevPos: { ...player.prevPos },
       vel: { ...player.vel },
@@ -77,6 +83,7 @@ function snapshotWorld(world: World): WorldSnapshot {
     match: { ...world.match },
     eventsLength: world.events.length,
     pendingHitstopFrames: world.pendingHitstopFrames,
+    switchCooldown: world.switchCooldown,
     rngDraws: [world.rng.next(), world.rng.next(), world.rng.next()],
   };
 }
@@ -94,18 +101,35 @@ describe('world state', () => {
     expect(first.ball.pendingImpulse).toBeNull();
     expect(first.ball.cooldown).toBe(0);
     expect(first.pendingHitstopFrames).toBe(0);
-    expect(first.players).toHaveLength(1);
-    expect(first.players[0]).toMatchObject({
-      id: 0,
-      team: 0,
-      control: 'human',
-      pos: { x: -3, y: 0, z: 0 },
-      prevPos: { x: -3, y: 0, z: 0 },
-      vel: { x: 0, y: 0, z: 0 },
-      facing: 0,
-      prevFacing: 0,
-    });
-    expect(first.controlledId).toBe(0);
+    expect(first.switchCooldown).toBe(0);
+    expect(first.players).toHaveLength(10);
+    expect(first.players.filter((player) => player.team === 0)).toHaveLength(5);
+    expect(first.players.filter((player) => player.team === 1)).toHaveLength(5);
+
+    for (const team of [0, 1] as const) {
+      const facing = team === 0 ? Math.PI / 2 : -Math.PI / 2;
+      for (let slotIndex = 0; slotIndex < FORMATION_2_2.length; slotIndex += 1) {
+        const slot = FORMATION_2_2[slotIndex];
+        const player = first.players[team * 5 + slotIndex];
+        const anchor = anchorFor(slot, team);
+
+        expect(player).toMatchObject({
+          id: team * 5 + slotIndex,
+          team,
+          role: slot.role,
+          anchor,
+          pos: anchor,
+          prevPos: anchor,
+          vel: { x: 0, y: 0, z: 0 },
+          facing,
+          prevFacing: facing,
+        });
+      }
+    }
+
+    const controlled = first.players.find((player) => player.id === first.controlledId);
+    expect(controlled).toMatchObject({ id: 3, team: 0, role: 'FWD', control: 'human' });
+    expect(first.players.filter((player) => player.control === 'human')).toHaveLength(1);
   });
 
   it('resets an existing world to its initial state', () => {
@@ -119,9 +143,13 @@ describe('world state', () => {
     world.ball.owner = 0;
     world.ball.pendingImpulse = { x: 3, y: 0, z: 4 };
     world.ball.cooldown = 12;
+    world.switchCooldown = 9;
     world.players[0].pos.x = 12;
     world.players[0].vel.z = 7;
     world.players[0].facing = 3;
+    world.players[0].control = 'human';
+    world.players[3].control = 'ai';
+    world.controlledId = 0;
     world.intent.shoot = true;
     world.input.moveX = 1;
     world.input.shootBuf = 4;

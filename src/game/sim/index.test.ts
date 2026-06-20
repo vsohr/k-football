@@ -1,7 +1,17 @@
 import { simulate } from './index';
 import { BALL_RADIUS, PITCH } from '../config/dimensions';
 import { setMove } from '../input/source';
-import { createWorld } from './world';
+import { createWorld, type Player, type World } from './world';
+
+function getControlledPlayer(world: World): Player {
+  const player = world.players.find((candidate) => candidate.id === world.controlledId);
+
+  if (player === undefined) {
+    throw new Error(`missing controlled player ${world.controlledId}`);
+  }
+
+  return player;
+}
 
 describe('simulate', () => {
   it('advances the tick, stores prevPos, and integrates ball velocity', () => {
@@ -58,10 +68,13 @@ describe('simulate', () => {
 
   it('runs input, movement, and ball systems before incrementing the tick', () => {
     const world = createWorld(9);
-    const player = world.players[0];
+    const player = getControlledPlayer(world);
     const initialPlayerX = player.pos.x;
-    const initialBallX = world.ball.pos.x;
 
+    world.ball.owner = player.id;
+    world.ball.pos.x = player.pos.x;
+    world.ball.pos.z = player.pos.z;
+    const initialBallX = world.ball.pos.x;
     setMove(world.input, 1, 0);
 
     for (let i = 0; i < 5; i += 1) {

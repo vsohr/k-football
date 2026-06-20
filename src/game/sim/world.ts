@@ -1,4 +1,5 @@
 import { createRng, type Rng } from '../core/rng';
+import { FORMATION_2_2, anchorFor, type Role, type Slot } from '../config/formations';
 import { createInputSource, type InputIntent, type InputSource } from '../input/source';
 
 export interface Vec3 {
@@ -27,7 +28,9 @@ export interface Ball {
 export interface Player {
   id: number;
   team: 0 | 1;
+  role: Role;
   control: 'human' | 'ai';
+  anchor: Vec3;
   pos: Vec3;
   prevPos: Vec3;
   vel: Vec3;
@@ -71,6 +74,7 @@ export interface World {
   rng: Rng;
   events: FeelEvent[];
   pendingHitstopFrames: number;
+  switchCooldown: number;
 }
 
 const INITIAL_BALL_VEL: Vec3 = {
@@ -79,11 +83,7 @@ const INITIAL_BALL_VEL: Vec3 = {
   z: 2.5,
 };
 
-const INITIAL_PLAYER_POS: Vec3 = {
-  x: -3,
-  y: 0,
-  z: 0,
-};
+const CONTROLLED_HOME_ID = 3;
 
 const initialSeeds = new WeakMap<World, number>();
 
@@ -122,40 +122,42 @@ function setInputZero(input: InputSource): void {
   input.tackleBuf = 0;
 }
 
-function createHumanPlayer(): Player {
+function createPlayer(slot: Slot, slotIndex: number, team: 0 | 1): Player {
+  const id = team * FORMATION_2_2.length + slotIndex;
+  const anchor = anchorFor(slot, team);
+  const facing = team === 0 ? Math.PI / 2 : -Math.PI / 2;
+
   return {
-    id: 0,
-    team: 0,
-    control: 'human',
-    pos: { ...INITIAL_PLAYER_POS },
-    prevPos: { ...INITIAL_PLAYER_POS },
+    id,
+    team,
+    role: slot.role,
+    control: id === CONTROLLED_HOME_ID ? 'human' : 'ai',
+    anchor: { ...anchor },
+    pos: { ...anchor },
+    prevPos: { ...anchor },
     vel: { x: 0, y: 0, z: 0 },
-    facing: 0,
-    prevFacing: 0,
+    facing,
+    prevFacing: facing,
   };
 }
 
-function setPlayerInitial(player: Player): void {
-  player.id = 0;
-  player.team = 0;
-  player.control = 'human';
-  setVec3(player.pos, INITIAL_PLAYER_POS);
-  setVec3(player.prevPos, INITIAL_PLAYER_POS);
-  player.vel.x = 0;
-  player.vel.y = 0;
-  player.vel.z = 0;
-  player.facing = 0;
-  player.prevFacing = 0;
+function createPlayers(): Player[] {
+  const players: Player[] = [];
+
+  for (const team of [0, 1] as const) {
+    for (let slotIndex = 0; slotIndex < FORMATION_2_2.length; slotIndex += 1) {
+      players.push(createPlayer(FORMATION_2_2[slotIndex], slotIndex, team));
+    }
+  }
+
+  return players;
 }
 
 function resetPlayers(players: Player[]): void {
-  if (players.length === 0) {
-    players.push(createHumanPlayer());
-    return;
-  }
+  const initialPlayers = createPlayers();
 
-  players.length = 1;
-  setPlayerInitial(players[0]);
+  players.length = 0;
+  players.push(...initialPlayers);
 }
 
 function applyInitialState(world: World, seed: number): void {
@@ -173,7 +175,7 @@ function applyInitialState(world: World, seed: number): void {
   world.ball.cooldown = 0;
 
   resetPlayers(world.players);
-  world.controlledId = 0;
+  world.controlledId = CONTROLLED_HOME_ID;
   setIntentZero(world.intent);
   setInputZero(world.input);
 
@@ -186,6 +188,7 @@ function applyInitialState(world: World, seed: number): void {
   world.rng = createRng(seed);
   world.events.length = 0;
   world.pendingHitstopFrames = 0;
+  world.switchCooldown = 0;
   initialSeeds.set(world, seed);
 }
 
@@ -200,8 +203,8 @@ export function createWorld(seed: number): World {
       pendingImpulse: null,
       cooldown: 0,
     },
-    players: [createHumanPlayer()],
-    controlledId: 0,
+    players: createPlayers(),
+    controlledId: CONTROLLED_HOME_ID,
     intent: createZeroIntent(),
     input: createInputSource(),
     match: {
@@ -214,6 +217,7 @@ export function createWorld(seed: number): World {
     rng: createRng(seed),
     events: [],
     pendingHitstopFrames: 0,
+    switchCooldown: 0,
   };
 
   initialSeeds.set(world, seed);

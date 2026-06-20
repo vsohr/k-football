@@ -1,13 +1,23 @@
 import { BALL, DRIBBLE } from '../../config/pace';
 import { shootHitstopFrames } from '../../config/feel';
 import { pressAction } from '../../input/source';
-import { createWorld } from '../world';
+import { createWorld, type Player, type World } from '../world';
 import { actionSystem } from './action';
+
+function getControlledPlayer(world: World): Player {
+  const player = world.players.find((candidate) => candidate.id === world.controlledId);
+
+  if (player === undefined) {
+    throw new Error(`missing controlled player ${world.controlledId}`);
+  }
+
+  return player;
+}
 
 describe('actionSystem', () => {
   it('shoots once when the controlled player owns the ball', () => {
     const world = createWorld(1);
-    const player = world.players[0];
+    const player = getControlledPlayer(world);
     player.facing = Math.PI / 2;
     world.ball.owner = player.id;
     world.ball.pos.x = 1;

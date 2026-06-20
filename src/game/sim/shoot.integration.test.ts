@@ -3,15 +3,25 @@ import { createTime, requestHitstop } from '../core/time';
 import { BALL, DRIBBLE } from '../config/pace';
 import { pressAction } from '../input/source';
 import { simulate } from './index';
-import { createWorld } from './world';
+import { createWorld, type Player, type World } from './world';
 
 const STEP = 1 / 60;
+
+function getControlledPlayer(world: World): Player {
+  const player = world.players.find((candidate) => candidate.id === world.controlledId);
+
+  if (player === undefined) {
+    throw new Error(`missing controlled player ${world.controlledId}`);
+  }
+
+  return player;
+}
 
 describe('shoot deferred impulse integration', () => {
   it('freezes with the ball at contact before launching after hitstop clears', () => {
     const world = createWorld(1);
     const time = createTime();
-    const player = world.players[0];
+    const player = getControlledPlayer(world);
     player.pos.x = 0;
     player.pos.z = 0;
     player.vel.x = 0;
