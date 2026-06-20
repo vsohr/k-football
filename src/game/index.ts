@@ -9,7 +9,7 @@ export { BALL_RADIUS, GOAL, PITCH, PLAYER_RADIUS } from './config/dimensions';
 export { FEEL, shootHitstopFrames, shootTrauma } from './config/feel';
 export { FORMATION_2_2, anchorFor } from './config/formations';
 export type { Role, Slot } from './config/formations';
-export { BALL, DRIBBLE, MATCH, MOVE, PASS, TACKLE } from './config/pace';
+export { BALL, DRIBBLE, KEEPER, MATCH, MOVE, PASS, TACKLE } from './config/pace';
 export {
   consumeAction,
   createInputSource,
@@ -23,6 +23,7 @@ export { simulate } from './sim';
 export { actionSystem } from './sim/systems/action';
 export { ballSystem } from './sim/systems/ball';
 export { inputSystem } from './sim/systems/input';
+export { keeperSystem } from './sim/systems/keeper';
 export { matchSystem } from './sim/systems/match';
 export { movementSystem } from './sim/systems/movement';
 export { switchSystem } from './sim/systems/switch';
@@ -31,6 +32,7 @@ export type {
   Ball,
   FeelEvent,
   FeelEventType,
+  KeeperState,
   MatchPhase,
   MatchState,
   Player,

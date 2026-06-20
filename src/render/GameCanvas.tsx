@@ -19,6 +19,7 @@ import { FeelController } from './feel/FeelController';
 import { AudioBus } from './feel/AudioBus';
 import { useMetaStore } from '@/state/metaStore';
 import { Field } from './Field';
+import { ConfettiController } from './feel/ConfettiController';
 
 const PHASE_TOAST: Partial<Record<MatchPhase, string>> = {
   GOAL: 'GOAL!',
@@ -39,6 +40,7 @@ interface GameModel {
   time: TimeState;
   feel: FeelController;
   audio: AudioBus;
+  confetti: ConfettiController;
 }
 
 /**
@@ -47,11 +49,13 @@ interface GameModel {
  * real-time camera shake, then calls R3F's `advance(now)` to render once (tech §3.2).
  */
 function GameDriver({ model }: { model: GameModel }) {
-  const { world, loop, feel, audio } = model;
+  const { world, loop, feel, audio, confetti } = model;
   const r3fAdvance = useThree((s) => s.advance);
   const camera = useThree((s) => s.camera);
   const ballRef = useRef<THREE.Mesh>(null);
   const playerRefs = useRef<(THREE.Group | null)[]>([]);
+  const confettiRef = useRef<THREE.InstancedMesh>(null);
+  const camBase = useRef(new THREE.Vector3(...CAMERA_POS));
   const lastMeta = useRef<{
     scoreHome: number;
     scoreAway: number;
@@ -100,11 +104,15 @@ function GameDriver({ model }: { model: GameModel }) {
           case 'tackleWhiff':
             audio.whiff();
             break;
-          case 'goal':
+          case 'goal': {
             feel.addTrauma(0.7);
             feel.addFlash(0.6);
             audio.goal();
+            const gx = ev.at?.x ?? 0;
+            // +X goal => home (red) scored; -X => away (blue).
+            confetti.burst(gx, 1, ev.at?.z ?? 0, gx > 0 ? KIT_COLOR[0] : KIT_COLOR[1]);
             break;
+          }
           default:
             break;
         }
@@ -159,9 +167,18 @@ function GameDriver({ model }: { model: GameModel }) {
         g.rotation.y = lerpAngle(p.prevFacing, p.facing, alpha);
       }
 
-      // Real-time camera shake/kick (keeps moving during hitstop — feel §8).
+      // Confetti (goal celebration) — write pooled instances each frame.
+      if (confettiRef.current) confetti.writeTo(confettiRef.current);
+
+      // Camera: ease toward a slight centered zoom-in during the goal celebration, then
+      // add the real-time shake/kick offset (keeps moving during hitstop — feel §8).
+      const zoom = world.match.phase === 'GOAL' ? 0.86 : 1;
+      const ease = Math.min(1, realDt * 3);
+      camBase.current.x += (CAMERA_POS[0] * zoom - camBase.current.x) * ease;
+      camBase.current.y += (CAMERA_POS[1] * zoom - camBase.current.y) * ease;
+      camBase.current.z += (CAMERA_POS[2] * zoom - camBase.current.z) * ease;
       const [ox, oy, oz] = feel.cameraOffset();
-      camera.position.set(CAMERA_POS[0] + ox, CAMERA_POS[1] + oy, CAMERA_POS[2] + oz);
+      camera.position.set(camBase.current.x + ox, camBase.current.y + oy, camBase.current.z + oz);
 
       r3fAdvance(now);
       raf = requestAnimationFrame(tick);
@@ -172,6 +189,14 @@ function GameDriver({ model }: { model: GameModel }) {
 
   return (
     <>
+      <instancedMesh
+        ref={confettiRef}
+        args={[undefined, undefined, confetti.max]}
+        frustumCulled={false}
+      >
+        <boxGeometry args={[1, 1, 0.35]} />
+        <meshBasicMaterial toneMapped={false} />
+      </instancedMesh>
       <mesh ref={ballRef} castShadow>
         <sphereGeometry args={[BALL_RENDER_RADIUS, 24, 24]} />
         <meshStandardMaterial color="#FFD23F" emissive="#FFD23F" emissiveIntensity={0.25} />
@@ -211,9 +236,13 @@ function Scene() {
     const time = createTime();
     const feel = new FeelController();
     const audio = new AudioBus();
+    const confetti = new ConfettiController();
     const loop = createLoop({
       time,
-      onRealTime: (dt) => feel.update(dt),
+      onRealTime: (dt) => {
+        feel.update(dt);
+        confetti.update(dt);
+      },
       simulate: (dt) => {
         simulate(world, dt);
         // sim requests hitstop by writing a frame count; translate it to the time clock
@@ -224,7 +253,7 @@ function Scene() {
         }
       },
     });
-    return { world, loop, time, feel, audio };
+    return { world, loop, time, feel, audio, confetti };
   }, []);
 
   return (

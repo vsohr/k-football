@@ -100,6 +100,10 @@ function clampPlayerToPitch(pos: Vec3, vel: Vec3): void {
 
 export function movementSystem(world: World, dt: number): void {
   for (const player of world.players) {
+    if (player.role === 'GK') {
+      continue;
+    }
+
     copyVec3(player.prevPos, player.pos);
     player.prevFacing = player.facing;
 

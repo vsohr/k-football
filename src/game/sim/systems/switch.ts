@@ -44,8 +44,20 @@ export function switchSystem(world: World): void {
 
   const owner = world.ball.owner === null ? undefined : findPlayer(world, world.ball.owner);
 
-  if (owner?.team === 0) {
+  if (owner?.team === 0 && owner.role !== 'GK') {
     world.controlledId = owner.id;
+    world.switchCooldown = 0;
+    updateControlFlags(world);
+    return;
+  }
+
+  if (owner?.team === 0 && owner.role === 'GK') {
+    const nextControlled = nearestHomeOutfieldToBall(world);
+
+    if (nextControlled !== undefined) {
+      world.controlledId = nextControlled.id;
+    }
+
     world.switchCooldown = 0;
     updateControlFlags(world);
     return;

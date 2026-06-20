@@ -35,6 +35,18 @@ export const TACKLE = {
   popHitstop: 4,
 } as const;
 
+export const KEEPER = {
+  reach: 2.2,
+  reactionTicks: 6,
+  diveSpeed: 15,
+  trackSpeed: 7,
+  lineInset: 1.2,
+  recoverTicks: 22,
+  distributeTicks: 24,
+  catchSpeedMax: 14,
+  zClamp: 4.5,
+} as const;
+
 export const MATCH = {
   halfLengthSec: 120,
   kickoffBeatSec: 0.75,

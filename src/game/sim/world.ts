@@ -26,6 +26,8 @@ export interface Ball {
   cooldown: number;
 }
 
+export type KeeperState = 'SET' | 'COMMIT' | 'RECOVER';
+
 export interface Player {
   id: number;
   team: 0 | 1;
@@ -38,6 +40,9 @@ export interface Player {
   facing: number;
   prevFacing: number;
   recoverFrames: number;
+  keeperState: KeeperState;
+  keeperTimer: number;
+  holdTimer: number;
 }
 
 export interface MatchState {
@@ -131,6 +136,9 @@ function createPlayer(slot: Slot, slotIndex: number, team: 0 | 1): Player {
     facing,
     prevFacing: facing,
     recoverFrames: 0,
+    keeperState: 'SET',
+    keeperTimer: 0,
+    holdTimer: 0,
   };
 }
 

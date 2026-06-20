@@ -1,6 +1,6 @@
 import { FORMATION_2_2, anchorFor, type Role } from '../config/formations';
 import { MATCH } from '../config/pace';
-import { createWorld, resetWorld, type World } from './world';
+import { createWorld, resetWorld, type KeeperState, type World } from './world';
 
 interface WorldSnapshot {
   tick: number;
@@ -24,6 +24,9 @@ interface WorldSnapshot {
     facing: number;
     prevFacing: number;
     recoverFrames: number;
+    keeperState: KeeperState;
+    keeperTimer: number;
+    holdTimer: number;
   }>;
   controlledId: number;
   intent: {
@@ -81,6 +84,9 @@ function snapshotWorld(world: World): WorldSnapshot {
       facing: player.facing,
       prevFacing: player.prevFacing,
       recoverFrames: player.recoverFrames,
+      keeperState: player.keeperState,
+      keeperTimer: player.keeperTimer,
+      holdTimer: player.holdTimer,
     })),
     controlledId: world.controlledId,
     intent: { ...world.intent },
@@ -132,6 +138,9 @@ describe('world state', () => {
           facing,
           prevFacing: facing,
           recoverFrames: 0,
+          keeperState: 'SET',
+          keeperTimer: 0,
+          holdTimer: 0,
         });
       }
     }
@@ -157,6 +166,9 @@ describe('world state', () => {
     world.players[0].vel.z = 7;
     world.players[0].facing = 3;
     world.players[0].recoverFrames = 11;
+    world.players[0].keeperState = 'RECOVER';
+    world.players[0].keeperTimer = 12;
+    world.players[0].holdTimer = 8;
     world.players[0].control = 'human';
     world.players[3].control = 'ai';
     world.controlledId = 0;

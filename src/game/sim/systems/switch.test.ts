@@ -84,4 +84,24 @@ describe('switchSystem', () => {
     expect(playerById(world, world.controlledId).role).not.toBe('GK');
     expectSingleHuman(world);
   });
+
+  it('does not hand control to the home goalkeeper when he owns the ball', () => {
+    const world = createWorld(5);
+    const goalkeeper = playerById(world, 0);
+    const defender = playerById(world, 1);
+
+    defender.pos.x = goalkeeper.pos.x + 1;
+    defender.pos.z = goalkeeper.pos.z;
+    world.ball.owner = goalkeeper.id;
+    world.ball.pos.x = goalkeeper.pos.x;
+    world.ball.pos.z = goalkeeper.pos.z;
+    world.switchCooldown = 7;
+
+    switchSystem(world);
+
+    expect(world.controlledId).toBe(defender.id);
+    expect(world.switchCooldown).toBe(0);
+    expect(playerById(world, world.controlledId).role).not.toBe('GK');
+    expectSingleHuman(world);
+  });
 });

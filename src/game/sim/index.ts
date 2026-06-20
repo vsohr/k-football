@@ -2,6 +2,7 @@ import type { World } from './world';
 import { actionSystem } from './systems/action';
 import { ballSystem } from './systems/ball';
 import { inputSystem } from './systems/input';
+import { keeperSystem } from './systems/keeper';
 import { matchSystem } from './systems/match';
 import { movementSystem } from './systems/movement';
 import { switchSystem } from './systems/switch';
@@ -13,6 +14,7 @@ export function simulate(world: World, dt: number): void {
   if (world.match.phase === 'PLAYING') {
     switchSystem(world);
     movementSystem(world, dt);
+    keeperSystem(world, dt);
     ballSystem(world, dt);
     actionSystem(world, dt);
   }

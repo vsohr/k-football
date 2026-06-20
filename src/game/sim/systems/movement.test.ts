@@ -188,4 +188,31 @@ describe('movementSystem', () => {
     expect(dummy.vel.x).toBeCloseTo(-2);
     expect(dummy.vel.z).toBeCloseTo(0);
   });
+
+  it('leaves goalkeepers for the keeper system even if selected', () => {
+    const world = createWorld(9);
+    const goalkeeper = world.players.find((player) => player.role === 'GK' && player.team === 0);
+
+    if (goalkeeper === undefined) {
+      throw new Error('missing home goalkeeper');
+    }
+
+    world.controlledId = goalkeeper.id;
+    goalkeeper.control = 'human';
+    goalkeeper.vel.x = 5;
+    goalkeeper.vel.z = -3;
+    setIntent(world, { moveX: 1, moveZ: 1, sprint: true });
+
+    const posBefore = { ...goalkeeper.pos };
+    const prevPosBefore = { ...goalkeeper.prevPos };
+    const velBefore = { ...goalkeeper.vel };
+    const facingBefore = goalkeeper.facing;
+
+    movementSystem(world, 1);
+
+    expect(goalkeeper.pos).toEqual(posBefore);
+    expect(goalkeeper.prevPos).toEqual(prevPosBefore);
+    expect(goalkeeper.vel).toEqual(velBefore);
+    expect(goalkeeper.facing).toBe(facingBefore);
+  });
 });

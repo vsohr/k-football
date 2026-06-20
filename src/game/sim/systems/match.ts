@@ -28,6 +28,9 @@ function resetPlayerForKickoff(player: Player): void {
   player.facing = facing;
   player.prevFacing = facing;
   player.recoverFrames = 0;
+  player.keeperState = 'SET';
+  player.keeperTimer = 0;
+  player.holdTimer = 0;
 }
 
 export function resetForKickoff(world: World): void {
