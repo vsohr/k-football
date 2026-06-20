@@ -9,7 +9,7 @@ export { BALL_RADIUS, PITCH, PLAYER_RADIUS } from './config/dimensions';
 export { FEEL, shootHitstopFrames, shootTrauma } from './config/feel';
 export { FORMATION_2_2, anchorFor } from './config/formations';
 export type { Role, Slot } from './config/formations';
-export { BALL, DRIBBLE, MOVE } from './config/pace';
+export { BALL, DRIBBLE, MOVE, PASS, TACKLE } from './config/pace';
 export {
   consumeAction,
   createInputSource,

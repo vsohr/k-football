@@ -1,4 +1,24 @@
 export const FEEL = {
+  pass: {
+    hitstopFrames: 0,
+    trauma: 0.04,
+    sfx: 'pass',
+  },
+  passCleanFT: {
+    hitstopFrames: 1,
+    trauma: 0.05,
+    sfx: 'pass',
+  },
+  tackleClean: {
+    hitstopFrames: 4,
+    trauma: 0.3,
+    sfx: 'tackle',
+  },
+  tackleWhiff: {
+    hitstopFrames: 0,
+    trauma: 0,
+    sfx: 'whiff',
+  },
   shoot: {
     hitstopMinFrames: 3,
     hitstopMaxFrames: 7,

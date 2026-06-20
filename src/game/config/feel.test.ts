@@ -17,4 +17,15 @@ describe('shoot feel tuning', () => {
     expect(shootTrauma(-1)).toBeCloseTo(0.3);
     expect(shootTrauma(2)).toBeCloseTo(0.6);
   });
+
+  it('keeps pass and tackle below the authored shot loudness ceiling', () => {
+    expect(FEEL.pass.hitstopFrames).toBeLessThanOrEqual(1);
+    expect(FEEL.pass.hitstopFrames).toBeLessThanOrEqual(
+      FEEL.tackleClean.hitstopFrames,
+    );
+    expect(FEEL.tackleClean.hitstopFrames).toBeLessThanOrEqual(
+      FEEL.shoot.hitstopMaxFrames,
+    );
+    expect(FEEL.tackleWhiff.hitstopFrames).toBe(0);
+  });
 });

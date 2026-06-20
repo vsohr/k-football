@@ -36,6 +36,7 @@ export interface Player {
   vel: Vec3;
   facing: number;
   prevFacing: number;
+  recoverFrames: number;
 }
 
 export interface MatchState {
@@ -138,6 +139,7 @@ function createPlayer(slot: Slot, slotIndex: number, team: 0 | 1): Player {
     vel: { x: 0, y: 0, z: 0 },
     facing,
     prevFacing: facing,
+    recoverFrames: 0,
   };
 }
 

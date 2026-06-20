@@ -157,4 +157,35 @@ describe('movementSystem', () => {
       expect(player.pos.y).toBe(0);
     }
   });
+
+  it('locks recovering players to friction-only movement and decrements recovery', () => {
+    const world = createWorld(8);
+    const controlled = getControlledPlayer(world);
+    const dummy = world.players.find(
+      (player) => player.team === 0 && player.id !== world.controlledId && player.role === 'DEF',
+    );
+
+    if (dummy === undefined) {
+      throw new Error('missing home defender dummy');
+    }
+
+    controlled.recoverFrames = 2;
+    controlled.vel.x = 5;
+    controlled.facing = Math.PI / 2;
+    dummy.recoverFrames = 1;
+    dummy.pos.x = dummy.anchor.x + 4;
+    dummy.prevPos.x = dummy.pos.x;
+    dummy.vel.x = -5;
+    setIntent(world, { moveZ: 1 });
+
+    movementSystem(world, 0.1);
+
+    expect(controlled.recoverFrames).toBe(1);
+    expect(controlled.vel.x).toBeCloseTo(2);
+    expect(controlled.vel.z).toBeCloseTo(0);
+    expect(controlled.facing).toBe(Math.PI / 2);
+    expect(dummy.recoverFrames).toBe(0);
+    expect(dummy.vel.x).toBeCloseTo(-2);
+    expect(dummy.vel.z).toBeCloseTo(0);
+  });
 });

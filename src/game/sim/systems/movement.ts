@@ -103,12 +103,27 @@ export function movementSystem(world: World, dt: number): void {
     copyVec3(player.prevPos, player.pos);
     player.prevFacing = player.facing;
 
+    if (player.recoverFrames > 0) {
+      player.recoverFrames = Math.max(0, player.recoverFrames - 1);
+      moveRecoveringPlayer(player, dt);
+      continue;
+    }
+
     if (player.id === world.controlledId) {
       movePlayer(player, world.intent.moveX, world.intent.moveZ, world.intent.sprint, dt);
     } else {
       moveAiPlayer(player, dt);
     }
   }
+}
+
+function moveRecoveringPlayer(player: Player, dt: number): void {
+  applyFriction(player.vel, MOVE.friction * dt);
+  player.pos.x += player.vel.x * dt;
+  player.pos.y = 0;
+  player.pos.z += player.vel.z * dt;
+  player.vel.y = 0;
+  clampPlayerToPitch(player.pos, player.vel);
 }
 
 function movePlayer(

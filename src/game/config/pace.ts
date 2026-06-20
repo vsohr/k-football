@@ -18,3 +18,19 @@ export const DRIBBLE = {
   pickupRadius: 0.9,
   shotCooldownTicks: 18,
 } as const;
+
+export const PASS = {
+  arcDeg: 120,
+  leadTime: 0.25,
+  speed: 16,
+  minSpeed: 9,
+  cooldownTicks: 12,
+} as const;
+
+export const TACKLE = {
+  range: 1.5,
+  cleanRecoverTicks: 8,
+  whiffRecoverTicks: 24,
+  popSpeed: 5,
+  popHitstop: 4,
+} as const;

@@ -70,13 +70,30 @@ function GameDriver({ model }: { model: GameModel }) {
 
       // Drain semantic feel events into the real-time feel channels (feel §7/§10).
       for (const ev of world.events) {
-        if (ev.type === 'shoot') {
-          const power = ev.power ?? 1;
-          feel.addTrauma(shootTrauma(power));
-          feel.addFlash(0.12 * power);
-          feel.addSquash(1);
-          feel.kick(0, -0.35 * power);
-          audio.shoot(power);
+        switch (ev.type) {
+          case 'shoot': {
+            const power = ev.power ?? 1;
+            feel.addTrauma(shootTrauma(power));
+            feel.addFlash(0.12 * power);
+            feel.addSquash(1);
+            feel.kick(0, -0.35 * power);
+            audio.shoot(power);
+            break;
+          }
+          case 'pass':
+            feel.addTrauma(0.04);
+            audio.pass();
+            break;
+          case 'tackleClean':
+            feel.addTrauma(0.3);
+            feel.kick(0, -0.25);
+            audio.tackle();
+            break;
+          case 'tackleWhiff':
+            audio.whiff();
+            break;
+          default:
+            break;
         }
       }
       world.events.length = 0;

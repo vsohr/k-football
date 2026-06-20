@@ -22,6 +22,7 @@ interface WorldSnapshot {
     vel: { x: number; y: number; z: number };
     facing: number;
     prevFacing: number;
+    recoverFrames: number;
   }>;
   controlledId: number;
   intent: {
@@ -76,6 +77,7 @@ function snapshotWorld(world: World): WorldSnapshot {
       vel: { ...player.vel },
       facing: player.facing,
       prevFacing: player.prevFacing,
+      recoverFrames: player.recoverFrames,
     })),
     controlledId: world.controlledId,
     intent: { ...world.intent },
@@ -123,6 +125,7 @@ describe('world state', () => {
           vel: { x: 0, y: 0, z: 0 },
           facing,
           prevFacing: facing,
+          recoverFrames: 0,
         });
       }
     }
@@ -147,6 +150,7 @@ describe('world state', () => {
     world.players[0].pos.x = 12;
     world.players[0].vel.z = 7;
     world.players[0].facing = 3;
+    world.players[0].recoverFrames = 11;
     world.players[0].control = 'human';
     world.players[3].control = 'ai';
     world.controlledId = 0;

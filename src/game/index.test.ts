@@ -5,9 +5,11 @@ import {
   DRIBBLE,
   FEEL,
   MOVE,
+  PASS,
   PITCH,
   PLAYER_RADIUS,
   SHOOT_BUFFER_TICKS,
+  TACKLE,
   FORMATION_2_2,
   actionSystem,
   anchorFor,
@@ -93,6 +95,8 @@ describe('game public API', () => {
     expect(MOVE.maxSpeed).toBe(8);
     expect(BALL.shotSpeed).toBe(22);
     expect(DRIBBLE.distance).toBe(0.9);
+    expect(PASS.speed).toBe(16);
+    expect(TACKLE.range).toBe(1.5);
     expect(FEEL.shoot.sfx).toBe('shoot');
     expect(shootHitstopFrames(1)).toBe(7);
     expect(shootTrauma(1)).toBeCloseTo(0.6);
