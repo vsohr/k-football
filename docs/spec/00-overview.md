@@ -78,7 +78,12 @@ each shippable, each leaving the game playable. Layers 2 + 3 + 7 together delive
 
 The architecture (see [`03-technical-architecture.md`](03-technical-architecture.md))
 keeps a hard seam between **simulation** (never changes as we climb) and
-**presentation** (the thing each layer upgrades).
+**presentation** (the thing each layer upgrades). The *deep* version of layers 2–8 —
+art direction, the exact rendering pipeline, materials, post-processing, VFX and the
+stadium, all research-backed with concrete APIs and a 60 fps budget — lives in
+[`06-graphics.md`](06-graphics.md). **Graphics are a first-class goal**, not an
+afterthought: we want it to look genuinely great. But the climb still starts only after
+the feel gate (M3b) passes on primitives.
 
 ---
 

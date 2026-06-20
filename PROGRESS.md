@@ -33,6 +33,24 @@ Fixed: loop contract, deferred-impulse hitstop, swept collision, 3-clock model,
 M2(dummy)/M3a/M3b reslice, assist+keeper+board edge cases, accessibility, audio policy,
 asset pipeline, determinism caveat, feel event schema, feel dev-tooling into M1.
 
+## Graphics (user asked to elevate graphics to a great state + research)
+- 3 parallel research agents (art direction / R3F pipeline / VFX+pitch+stadium).
+  Art-direction agent rate-limited; pipeline + VFX agents returned deep cross-verified
+  findings. Wrote docs/spec/06-graphics.md (art direction, pipeline, materials, post,
+  VFX, stadium, camera, perf tiers + Appendix A: versions/libs/gotchas).
+- Folded verified corrections: AgX tone mapping (not ACES default), MeshLambert pitch +
+  anti-flicker recipe, baked line texture (avoid geometry lines), N8AO+multisampling=0,
+  selective bloom via emissive+toneMapped=false, decals static-only, no built-in motion
+  blur, flatShading/vertexColors post-r125 API, frameloop=never+advance() w/ composer.
+- Updated tech §3.2 (advance vs gl.render), overview ladder pointer, roadmap M4-M7.
+
+## Autonomous build directive (user)
+"commit and push frequently after each change, use codex for coding + review its code,
+keep going until done." Remote: github.com/vsohr/k-football (gh authed). main + spec
+pushed.
+
 ## Next steps
-1. Get D6 decision from user. 2. Optional round-2 Codex pass on revised spec.
-3. Merge spec branch to main. 4. Plan M0/M1 (writing-plans) → Codex implements → review.
+1. Round-2 Codex review of full expanded spec (incl. graphics) — IN PROGRESS.
+2. Incorporate, merge spec → main, push.
+3. Build worktree; M0 scaffold via Codex (TDD) → review → commit/push; then M1...M3b,
+   then graphics M4-M7. Codex codes, Claude reviews each chunk.

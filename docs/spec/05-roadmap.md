@@ -98,39 +98,59 @@ ladder.**
 
 ---
 
-## M4 — Lighting, shadows, tone mapping *(L2 + L3)*
+> Art layers M4–M7 implement the deep, research-backed plan in
+> [`06-graphics.md`](06-graphics.md) (art direction, exact pipeline, materials, post,
+> VFX, stadium, perf tiers + Appendix A versions/gotchas). Each art milestone targets a
+> **named quality tier** and must hold the 60 fps budget. **Graphics are a first-class
+> goal** — these milestones are where "great-looking" is delivered.
+
+## M4 — Lighting, shadows, tone mapping + color management *(L2 + L3)* → graphics §2
 **Goal:** the cheapest, biggest visual jump — still primitives.
-- One directional "sun" + shadow map (tight frustum) + hemisphere fill; real ball &
-  player shadows (height cue now physical).
-- ACES filmic tone mapping + correct color space.
+- Lighting rig (graphics §2.2): directional "sun" (tight shadow frustum, `normalBias`)
+  + hemisphere fill + low ambient; real player shadows.
+- **Ball height cue** done right (graphics §2.3): projected blob shadow scaling/fading
+  with height, layered with the real shadow — readable on every tier (P4).
+- **Color management + tone mapping** (graphics §2.1): AgX base (A/B vs ACES), correct
+  color spaces, kept on the renderer (no `<ToneMapping>` effect).
+- **Dev graphics tuning panel** (`leva`, graphics §10) to author the look by eye.
 **Exit:** primitives look grounded and cinematic; 60 FPS held. **Review gate.**
 
 ---
 
-## M5 — PBR materials + environment + pitch dressing *(L4)*
-- `MeshStandardMaterial`; drei `<Environment>`; grass texture with **mowed stripes**;
-  proper goals/nets/boards materials; high-contrast kit colors on capsules.
-**Exit:** reads as a real (if abstract) football scene. **Review gate.**
+## M5 — PBR/materials + environment + the pitch *(L4)* → graphics §2.4, §2.5, §4
+- Materials (graphics §2.4): standard/lambert as specced; **fresnel rim** on players via
+  `three-custom-shader-material`; flat-shading/vertex-color low-poly props.
+- Environment (graphics §2.5): gradient sky + `<Environment>` IBL + subtle fog.
+- **The pitch** (graphics §4): one plane, **baked stripe+line texture** with the
+  anti-flicker recipe (mipmaps + max anisotropy + POT); goals/nets/boards materials.
+- High-contrast, colorblind-safe kit colors (graphics §1.4).
+**Exit:** reads as a real, premium-stylized football scene. **Review gate.**
 
 ---
 
-## M6 — Real player models + animation *(L5 + L6)*
+## M6 — Real player models + animation *(L5 + L6)* → graphics §2.4, §10
 - Swap capsules for one low-poly rigged glTF model (Quaternius CC0 default; Synty
-  optional), recolored per kit; selection ring.
-- AnimationMixer: idle/run/kick/tackle/dive blended from the existing `Player.state`.
-  (Hand-key the kick contact to land on the hitstop frame.)
+  optional), recolored per kit; bright selection ring/disc.
+- AnimationMixer: idle/run/kick/tackle/dive/celebrate blended from the existing
+  `Player.state`. (Hand-key the kick contact to land on the hitstop frame.)
 **Exit:** players read as players; animation syncs to actions without changing sim.
 **Review gate.** *(UI/visual integration kept in-house, not delegated — user rule.)*
 
 ---
 
-## M7 — Post-processing + full juice + dressing *(L7 + L8)*
-- EffectComposer: subtle bloom, AO (grounds contacts), vignette, color grade
-  (toggleable for low-end).
-- Full particle suite (turf, sparks, confetti), polished trails, dynamic crowd/ambience
-  audio, near-miss emphasis; instanced crowd, stands, floodlights.
-**Exit:** the "AAA glaze"; the target experience (overview §5) is fully realized.
-**Deep-review + QA + product-owner sign-off.**
+## M7 — Post-processing + full juice + stadium *(L7 + L8)* → graphics §3, §5, §6, §7
+- **Post chain** (graphics §3, in order): N8AO → Bloom (selective-via-emissive) →
+  **TiltShift** (the signature miniature look) → LUT grade → SMAA → Vignette → CA;
+  `multisampling={0}` gotcha respected; tier-gated; goal-cam DoF.
+- **Full VFX** (graphics §5): turf spray, confetti, sparks, ball trails, **goal-net
+  vertex ripple**, live skid marks (CanvasTexture/ribbon, not `<Decal>`).
+- **Stadium** (graphics §6): instanced animated crowd, stands/impostors, **floodlight
+  bloom** (night look), ad boards.
+- **Camera juice** (graphics §7) + dynamic crowd/ambience audio + near-miss emphasis.
+- Quality tiers + adaptive degrade (graphics §8): `useDetectGPU`, `<PerformanceMonitor>`,
+  `<AdaptiveDpr>`.
+**Exit:** the "AAA glaze"; the night-floodlight hero look; the target experience
+(overview §5) fully realized at 60 fps. **Deep-review + QA + product-owner sign-off.**
 
 ---
 

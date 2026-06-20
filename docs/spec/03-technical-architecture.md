@@ -116,7 +116,7 @@ function tick(now: number) {
   // (D) Present: interpolate prev→cur by alpha, then render exactly once
   const alpha = acc / STEP;
   bridge.sync(alpha);                // push interpolated sim transforms onto meshes
-  gl.render(scene, camera);          // single manual render
+  advance(now);                      // R3F frame: runs the EffectComposer's render (post)
   requestAnimationFrame(tick);
 }
 ```
@@ -133,6 +133,14 @@ Key points (cross-ref feel doc §8):
 - **Contact/hitstop ordering** is handled inside `simulate` via deferred impulses — see
   §6.1 (a naïve "set velocity then integrate same tick" launches the ball one tick
   *before* the freeze; we must not do that).
+- **Why `frameloop="never"` + `advance(now)` (not raw `gl.render`, not `"always"`):**
+  this is a genuine host-driven fixed-step loop, which is the documented valid use of
+  `"never"` (`"demand"`/`"always"` would either freeze continuous motion or take rAF
+  ownership away from our accumulator). Once post-processing is added, the
+  `<EffectComposer>` renders via an internal `useFrame`, so we must let R3F run the
+  frame — call `advance(now)`, **not** `gl.render` directly. Before post exists
+  (M1–M3 primitives) a direct `gl.render` is fine; `advance` is the forward-compatible
+  call. We still use **no `useFrame` for game logic** — only the composer's own.
 
 ---
 

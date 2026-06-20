@@ -17,6 +17,7 @@ tension-and-release pace.
 - [`docs/spec/03-technical-architecture.md`](docs/spec/03-technical-architecture.md) — stack, systems, fidelity ladder
 - [`docs/spec/04-acceptance-criteria.md`](docs/spec/04-acceptance-criteria.md) — definition of done
 - [`docs/spec/05-roadmap.md`](docs/spec/05-roadmap.md) — milestones
+- [`docs/spec/06-graphics.md`](docs/spec/06-graphics.md) — art direction, rendering pipeline, VFX (research-backed)
 - [`docs/spec/99-review-log.md`](docs/spec/99-review-log.md) — Codex review gate + resolutions
 
 ## Tech (planned)
