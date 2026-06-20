@@ -1,4 +1,7 @@
+import { useThree } from '@react-three/fiber';
+import { useMemo } from 'react';
 import { PITCH, GOAL } from '@/game';
+import { makePitchTexture } from './pitchTexture';
 
 const HALF_X = PITCH.halfX;
 const HALF_Z = PITCH.halfZ;
@@ -43,12 +46,14 @@ function Goal({ dir }: { dir: 1 | -1 }) {
 /** Low side/end boards (with goal-mouth gaps), the pitch plane, and both goals. */
 export function Field() {
   const endSegLen = HALF_Z - GOAL_HW; // board length above/below the goal mouth
+  const gl = useThree((s) => s.gl);
+  const pitchTexture = useMemo(() => makePitchTexture(gl), [gl]);
   return (
     <group>
       {/* pitch */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[HALF_X * 2 + 6, HALF_Z * 2 + 6]} />
-        <meshStandardMaterial color="#3FAE5A" />
+        <meshStandardMaterial map={pitchTexture} roughness={0.92} metalness={0} />
       </mesh>
 
       {/* side boards (full length) */}
