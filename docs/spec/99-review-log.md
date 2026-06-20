@@ -50,9 +50,10 @@ Codex concurred with all flagged defaults **except the camera**:
 - Custom physics (+swept) ✅ · bouncing boards ✅ · Howler-behind-AudioBus ✅ ·
   hand-rolled ECS-lite ✅ · stylized-clean art ✅ · tap shot ✅ · 2-min halves ✅ ·
   assisted pass (constrained) ✅.
-- **Camera (D6) — open disagreement**: Codex recommends **tilted orthographic**
-  (readability + undistorted aim); the brainstorm leaned **tilted perspective** (depth).
-  **Escalated to the user** as the one genuine open product fork.
+- **Camera (D6) — RESOLVED by user → tilted perspective** (~55–60°, modest FOV) for
+  depth/2.5D. Codex had recommended orthographic for readability; user chose
+  perspective. Mitigations: modest FOV, generous assist tolerances, ortho fallback as a
+  config swap.
 
 ### Status
 Spec updated to address all critical + major findings. **Cleared to begin M0, and M1

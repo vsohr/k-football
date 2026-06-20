@@ -559,10 +559,10 @@ Status after the M-stage Codex review (see `99-review-log.md`):
 1. **Custom kinematics vs Rapier** (§1, §6). **Decided: custom**, *but* with mandatory
    swept collision (§6.2) and a physics facade so Rapier can be swapped behind
    `BallSystem`/`CollisionSystem` if needed. (Codex concurred.)
-2. **Perspective vs orthographic** camera (§9). **Open — Codex dissents.** Spec
-   originally recommended tilted perspective (~55–60°) for depth; Codex recommends
-   **orthographic** tilted for readability + stable aiming (no perspective distortion
-   of aim/scale). *Flagged to the user as decision D6.* Both keep 3D shadows.
+2. **Perspective vs orthographic** camera (§9). **Decided: tilted perspective**
+   (~55–60°, modest FOV) — user chose depth/2.5D over Codex's orthographic
+   readability argument. Mitigations: keep FOV modest, assist tolerances generous,
+   keep an ortho fallback as a 1-line config swap. (Codex dissented; user overruled.)
 3. **Bouncing boards vs ball-return** (game-design §1.3). **Decided: bouncing boards**
    with visible rails, rounded corners, tangent friction, anti-stuck (Codex concurred).
 4. **Howler vs raw WebAudio** (§1, §17). **Decided: Howler behind an `AudioBus`

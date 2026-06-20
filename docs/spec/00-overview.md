@@ -159,12 +159,13 @@ Everything in the other spec docs exists to produce exactly that loop.
 | D3 | In-match input | **Keyboard** (mouse = menus only) | Gamepad-first |
 | D4 | Match length | **2-min halves** (4 min total) | 90s / 3-min |
 | D5 | Pass aim | **Assisted** (auto-targets best teammate in facing arc) | Manual stick-aimed |
-| D6 | Camera projection | **Open — needs your call.** Spec leaned tilted *perspective* (~55–60°) for depth; Codex review recommends tilted **orthographic** for top-down readability + undistorted aim. | Perspective ↔ Orthographic |
+| D6 | Camera projection | **DECIDED: tilted perspective** (~55–60°, modest FOV) for depth/2.5D look | (Codex argued orthographic; user chose perspective) |
 
 These are flagged again where they matter in the other docs. Changing a default is
-cheap now, expensive after implementation — so confirm early. **D6 is the one genuine
-open fork** (the rest have safe defaults); the Codex review (`docs/spec/99-review-log.md`)
-argues orthographic, the original brainstorm leaned perspective.
+cheap now, expensive after implementation — so confirm early. All decisions are now
+settled; D6 was resolved in favour of **tilted perspective** (matches the "great-looking,
+depth, 2.5D" goal). To protect readability/aim (P4) we keep FOV modest and the assist
+tolerances generous; an orthographic fallback stays a 1-line config swap.
 
 ---
 
