@@ -20,6 +20,8 @@ export {
   setSprint,
 } from './input/source';
 export type { InputIntent, InputSource } from './input/source';
+export { applyGamepad, STICK_DEADZONE, XBOX_AXIS, XBOX_BUTTON } from './input/gamepad';
+export type { GamepadApplyContext, GamepadSnapshot } from './input/gamepad';
 export { simulate } from './sim';
 export { actionSystem, performPass, performShoot, performTackle } from './sim/systems/action';
 export { aiSystem } from './sim/systems/ai';

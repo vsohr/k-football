@@ -104,4 +104,55 @@ describe('switchSystem', () => {
     expect(playerById(world, world.controlledId).role).not.toBe('GK');
     expectSingleHuman(world);
   });
+
+  it('manual-switches to the next home outfield player while out of possession', () => {
+    const world = createWorld(6);
+
+    world.ball.owner = null;
+    world.controlledId = 1;
+    world.intent.switch = true;
+    world.input.switchBuf = 3;
+
+    switchSystem(world);
+
+    expect(world.controlledId).toBe(2);
+    expect(world.switchCooldown).toBe(45);
+    expect(world.input.switchBuf).toBe(0);
+    expectSingleHuman(world);
+  });
+
+  it('keeps the manual choice while switch cooldown remains active', () => {
+    const world = createWorld(7);
+    const nearest = playerById(world, 1);
+
+    world.ball.owner = null;
+    world.ball.pos.x = nearest.pos.x;
+    world.ball.pos.z = nearest.pos.z;
+    world.controlledId = 2;
+    world.switchCooldown = 45;
+    world.intent.switch = false;
+
+    switchSystem(world);
+
+    expect(world.controlledId).toBe(2);
+    expect(world.switchCooldown).toBe(44);
+    expectSingleHuman(world);
+  });
+
+  it('does not manual-switch away from the home ball carrier', () => {
+    const world = createWorld(8);
+    const owner = playerById(world, 4);
+
+    world.ball.owner = owner.id;
+    world.controlledId = 1;
+    world.intent.switch = true;
+    world.input.switchBuf = 3;
+
+    switchSystem(world);
+
+    expect(world.controlledId).toBe(owner.id);
+    expect(world.switchCooldown).toBe(0);
+    expect(world.input.switchBuf).toBe(3);
+    expectSingleHuman(world);
+  });
 });

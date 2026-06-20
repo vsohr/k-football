@@ -103,6 +103,7 @@ function createZeroIntent(): InputIntent {
     shoot: false,
     pass: false,
     tackle: false,
+    switch: false,
   };
 }
 
@@ -113,6 +114,7 @@ function setIntentZero(intent: InputIntent): void {
   intent.shoot = false;
   intent.pass = false;
   intent.tackle = false;
+  intent.switch = false;
 }
 
 function setInputZero(input: InputSource): void {
@@ -122,6 +124,7 @@ function setInputZero(input: InputSource): void {
   input.shootBuf = 0;
   input.passBuf = 0;
   input.tackleBuf = 0;
+  input.switchBuf = 0;
 }
 
 function createPlayer(slot: Slot, slotIndex: number, team: 0 | 1): Player {

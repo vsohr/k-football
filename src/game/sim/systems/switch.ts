@@ -1,6 +1,8 @@
+import { consumeAction } from '../../input/source';
 import type { Player, World } from '../world';
 
 const SWITCH_COOLDOWN_TICKS = 18;
+const MANUAL_SWITCH_COOLDOWN_TICKS = 45;
 
 function findPlayer(world: World, id: number): Player | undefined {
   return world.players.find((player) => player.id === id);
@@ -33,6 +35,18 @@ function nearestHomeOutfieldToBall(world: World): Player | undefined {
   return nearest;
 }
 
+function homeOutfieldPlayers(world: World): Player[] {
+  return world.players
+    .filter((player) => player.team === 0 && player.role !== 'GK')
+    .sort((a, b) => a.id - b.id);
+}
+
+function nextHomeOutfield(world: World): Player | undefined {
+  const players = homeOutfieldPlayers(world);
+
+  return players.find((player) => player.id > world.controlledId) ?? players[0];
+}
+
 function updateControlFlags(world: World): void {
   for (const player of world.players) {
     player.control = player.id === world.controlledId ? 'human' : 'ai';
@@ -59,6 +73,19 @@ export function switchSystem(world: World): void {
     }
 
     world.switchCooldown = 0;
+    updateControlFlags(world);
+    return;
+  }
+
+  if (world.intent.switch) {
+    const nextControlled = nextHomeOutfield(world);
+
+    if (nextControlled !== undefined) {
+      world.controlledId = nextControlled.id;
+    }
+
+    consumeAction(world.input, 'switch');
+    world.switchCooldown = MANUAL_SWITCH_COOLDOWN_TICKS;
     updateControlFlags(world);
     return;
   }

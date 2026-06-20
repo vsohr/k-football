@@ -7,6 +7,7 @@ export interface InputIntent {
   shoot: boolean;
   pass: boolean;
   tackle: boolean;
+  switch: boolean;
 }
 
 export interface InputSource {
@@ -16,7 +17,10 @@ export interface InputSource {
   shootBuf: number;
   passBuf: number;
   tackleBuf: number;
+  switchBuf: number;
 }
+
+type InputAction = 'shoot' | 'pass' | 'tackle' | 'switch';
 
 function clampUnit(value: number): number {
   return Math.max(-1, Math.min(1, value));
@@ -34,6 +38,7 @@ export function createInputSource(): InputSource {
     shootBuf: 0,
     passBuf: 0,
     tackleBuf: 0,
+    switchBuf: 0,
   };
 }
 
@@ -46,13 +51,15 @@ export function setSprint(src: InputSource, on: boolean): void {
   src.sprint = on;
 }
 
-export function pressAction(src: InputSource, a: 'shoot' | 'pass' | 'tackle'): void {
+export function pressAction(src: InputSource, a: InputAction): void {
   if (a === 'shoot') {
     src.shootBuf = SHOOT_BUFFER_TICKS;
   } else if (a === 'pass') {
     src.passBuf = SHOOT_BUFFER_TICKS;
-  } else {
+  } else if (a === 'tackle') {
     src.tackleBuf = SHOOT_BUFFER_TICKS;
+  } else {
+    src.switchBuf = SHOOT_BUFFER_TICKS;
   }
 }
 
@@ -64,21 +71,25 @@ export function sampleIntent(src: InputSource): InputIntent {
     shoot: src.shootBuf > 0,
     pass: src.passBuf > 0,
     tackle: src.tackleBuf > 0,
+    switch: src.switchBuf > 0,
   };
 
   src.shootBuf = decrementBuffer(src.shootBuf);
   src.passBuf = decrementBuffer(src.passBuf);
   src.tackleBuf = decrementBuffer(src.tackleBuf);
+  src.switchBuf = decrementBuffer(src.switchBuf);
 
   return intent;
 }
 
-export function consumeAction(src: InputSource, a: 'shoot' | 'pass' | 'tackle'): void {
+export function consumeAction(src: InputSource, a: InputAction): void {
   if (a === 'shoot') {
     src.shootBuf = 0;
   } else if (a === 'pass') {
     src.passBuf = 0;
-  } else {
+  } else if (a === 'tackle') {
     src.tackleBuf = 0;
+  } else {
+    src.switchBuf = 0;
   }
 }

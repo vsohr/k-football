@@ -12,6 +12,7 @@ const ZERO_INTENT: InputIntent = {
   shoot: false,
   pass: false,
   tackle: false,
+  switch: false,
 };
 
 function setIntent(world: ReturnType<typeof createWorld>, intent: Partial<InputIntent>): void {

@@ -22,6 +22,8 @@ import { useMetaStore } from '@/state/metaStore';
 import { Field } from './Field';
 import { Effects } from './Effects';
 import { ConfettiController } from './feel/ConfettiController';
+import { makeBallTexture } from './ballTexture';
+import { pollGamepad } from './gamepadPoll';
 
 const PHASE_TOAST: Partial<Record<MatchPhase, string>> = {
   GOAL: 'GOAL!',
@@ -35,6 +37,13 @@ const CAMERA_POS: [number, number, number] = [0, 32, 19];
 const CAMERA_FOV = 46;
 const BALL_RENDER_RADIUS = 0.4;
 const KIT_COLOR = ['#E8453C', '#2D6CF0'] as const;
+const SKIN_COLOR = '#e8b48a';
+const SHORTS_COLOR = '#eef1f5';
+const HAIR_COLOR = '#2a2722';
+
+// Reused scratch for ball-roll integration (single ball — no per-frame allocation).
+const ROLL_AXIS = new THREE.Vector3();
+const ROLL_DELTA = new THREE.Quaternion();
 
 interface GameModel {
   world: World;
@@ -54,10 +63,16 @@ function GameDriver({ model }: { model: GameModel }) {
   const { world, loop, feel, audio, confetti } = model;
   const r3fAdvance = useThree((s) => s.advance);
   const camera = useThree((s) => s.camera);
+  const ballGroupRef = useRef<THREE.Group>(null);
   const ballRef = useRef<THREE.Mesh>(null);
+  const ballSpin = useRef(new THREE.Quaternion());
+  const ballLastPos = useRef(new THREE.Vector3());
   const playerRefs = useRef<(THREE.Group | null)[]>([]);
+  const ringRefs = useRef<(THREE.Mesh | null)[]>([]);
   const confettiRef = useRef<THREE.InstancedMesh>(null);
   const camBase = useRef(new THREE.Vector3(...CAMERA_POS));
+  const gamepadPrev = useRef<boolean[]>([]);
+  const ballTexture = useMemo(() => makeBallTexture(), []);
   const lastMeta = useRef<{
     scoreHome: number;
     scoreAway: number;
@@ -84,6 +99,9 @@ function GameDriver({ model }: { model: GameModel }) {
       const meta = useMetaStore.getState();
       model.time.paused = !meta.started || meta.paused;
 
+      // Gamepad -> InputSource: poll once per frame before the sim advances.
+      gamepadPrev.current = pollGamepad(world, gamepadPrev.current, unlockAudio);
+
       const { alpha } = loop.advance(realDt);
 
       // Drain semantic feel events into the real-time feel channels (feel §7/§10).
@@ -103,15 +121,14 @@ function GameDriver({ model }: { model: GameModel }) {
             audio.pass();
             break;
           case 'tackleClean':
-            feel.addTrauma(0.3);
-            feel.kick(0, -0.25);
+            // Screen shake is reserved for shooting; tackles keep only their SFX.
             audio.tackle();
             break;
           case 'tackleWhiff':
             audio.whiff();
             break;
           case 'goal': {
-            feel.addTrauma(0.7);
+            // Screen shake is reserved for shooting; the goal keeps its flash + SFX.
             feel.addFlash(0.6);
             audio.goal();
             const gx = ev.at?.x ?? 0;
@@ -155,22 +172,39 @@ function GameDriver({ model }: { model: GameModel }) {
 
       // bridge.sync(alpha): interpolate sim transforms onto mesh refs before render.
       const b = world.ball;
-      if (ballRef.current) {
-        ballRef.current.position.set(
-          lerp(b.prevPos.x, b.pos.x, alpha),
-          lerp(b.prevPos.y, b.pos.y, alpha) + BALL_RENDER_RADIUS,
-          lerp(b.prevPos.z, b.pos.z, alpha),
-        );
-        // squash & stretch: flatten vertically + bulge horizontally on a strike.
+      const ballGroup = ballGroupRef.current;
+      if (ballGroup) {
+        const bx = lerp(b.prevPos.x, b.pos.x, alpha);
+        const bz = lerp(b.prevPos.z, b.pos.z, alpha);
+        ballGroup.position.set(bx, lerp(b.prevPos.y, b.pos.y, alpha) + BALL_RENDER_RADIUS, bz);
+        // squash & stretch on the group (world-aligned) so the spin below stays separate.
         const s = feel.squash;
-        ballRef.current.scale.set(1 + s * 0.35, 1 - s * 0.3, 1 + s * 0.35);
+        ballGroup.scale.set(1 + s * 0.35, 1 - s * 0.3, 1 + s * 0.35);
+        // Roll: accumulate spin about (up × travel) by distance / radius so the
+        // pentagons visibly tumble in the direction of motion.
+        const last = ballLastPos.current;
+        const dx = bx - last.x;
+        const dz = bz - last.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 1e-4 && ballRef.current) {
+          ROLL_AXIS.set(dz, 0, -dx).normalize();
+          ROLL_DELTA.setFromAxisAngle(ROLL_AXIS, dist / BALL_RENDER_RADIUS);
+          ballSpin.current.premultiply(ROLL_DELTA);
+          ballRef.current.quaternion.copy(ballSpin.current);
+        }
+        last.set(bx, 0, bz);
       }
       for (let i = 0; i < world.players.length; i++) {
         const p = world.players[i];
         const g = playerRefs.current[i];
-        if (!g) continue;
-        g.position.set(lerp(p.prevPos.x, p.pos.x, alpha), 0, lerp(p.prevPos.z, p.pos.z, alpha));
-        g.rotation.y = lerpAngle(p.prevFacing, p.facing, alpha);
+        if (g) {
+          g.position.set(lerp(p.prevPos.x, p.pos.x, alpha), 0, lerp(p.prevPos.z, p.pos.z, alpha));
+          g.rotation.y = lerpAngle(p.prevFacing, p.facing, alpha);
+        }
+        // Selection ring follows auto-switch — toggled imperatively because the driver
+        // never re-renders React, so a JSX control flag would stay stale (the bug fix).
+        const ring = ringRefs.current[i];
+        if (ring) ring.visible = p.id === world.controlledId;
       }
 
       // Confetti (goal celebration) — write pooled instances each frame.
@@ -191,7 +225,7 @@ function GameDriver({ model }: { model: GameModel }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [world, loop, feel, audio, camera, r3fAdvance]);
+  }, [world, loop, feel, audio, confetti, camera, r3fAdvance, unlockAudio, model]);
 
   return (
     <>
@@ -203,15 +237,19 @@ function GameDriver({ model }: { model: GameModel }) {
         <boxGeometry args={[1, 1, 0.35]} />
         <meshBasicMaterial toneMapped={false} />
       </instancedMesh>
-      <mesh ref={ballRef} castShadow>
-        <sphereGeometry args={[BALL_RENDER_RADIUS, 24, 24]} />
-        <meshStandardMaterial
-          color="#FFD23F"
-          emissive="#FFD23F"
-          emissiveIntensity={1.5}
-          toneMapped={false}
-        />
-      </mesh>
+      <group ref={ballGroupRef}>
+        <mesh ref={ballRef} castShadow>
+          <sphereGeometry args={[BALL_RENDER_RADIUS, 32, 32]} />
+          <meshStandardMaterial
+            map={ballTexture}
+            color="#ffffff"
+            roughness={0.5}
+            metalness={0}
+            emissive="#ffffff"
+            emissiveIntensity={0.08}
+          />
+        </mesh>
+      </group>
       {world.players.map((p, i) => (
         <group
           key={p.id}
@@ -219,29 +257,78 @@ function GameDriver({ model }: { model: GameModel }) {
             playerRefs.current[i] = el;
           }}
         >
-          <mesh castShadow position={[0, 0.85, 0]}>
-            <capsuleGeometry args={[0.38, 0.95, 8, 16]} />
-            <meshStandardMaterial color={KIT_COLOR[p.team]} roughness={0.6} />
-          </mesh>
-          {/* head */}
-          <mesh castShadow position={[0, 1.5, 0]}>
-            <sphereGeometry args={[0.26, 16, 16]} />
-            <meshStandardMaterial color="#e8c39a" roughness={0.7} />
-          </mesh>
-          {/* facing pip (local +Z = forward) */}
-          <mesh position={[0, 0.95, 0.42]}>
-            <boxGeometry args={[0.16, 0.16, 0.28]} />
-            <meshStandardMaterial color="#0d1117" />
-          </mesh>
-          {p.control === 'human' && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
-              <ringGeometry args={[0.62, 0.78, 28]} />
-              <meshBasicMaterial color="#FFE76A" transparent opacity={0.95} toneMapped={false} />
-            </mesh>
-          )}
+          <PlayerFigure
+            team={p.team}
+            ringRef={(el) => {
+              ringRefs.current[i] = el;
+            }}
+          />
         </group>
       ))}
     </>
+  );
+}
+
+/**
+ * Low-poly footballer from primitives, tuned to read from the near-top-down camera:
+ * shoulders wider than deep (non-uniform torso scale) and dark hair covering the crown
+ * and back of a skin head — so the exposed face cues facing direction from above. The
+ * selection ring's visibility is driven imperatively by GameDriver each frame.
+ */
+function PlayerFigure({
+  team,
+  ringRef,
+}: {
+  team: 0 | 1;
+  ringRef: (el: THREE.Mesh | null) => void;
+}) {
+  const kit = KIT_COLOR[team];
+  return (
+    <group>
+      {/* selection ring under the feet — visibility set each frame by the driver */}
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} visible={false}>
+        <ringGeometry args={[0.5, 0.68, 32]} />
+        <meshBasicMaterial color="#FFE76A" transparent opacity={0.95} toneMapped={false} />
+      </mesh>
+      {/* legs */}
+      <mesh castShadow position={[-0.13, 0.32, 0]}>
+        <capsuleGeometry args={[0.1, 0.4, 6, 10]} />
+        <meshStandardMaterial color={SKIN_COLOR} roughness={0.8} />
+      </mesh>
+      <mesh castShadow position={[0.13, 0.32, 0]}>
+        <capsuleGeometry args={[0.1, 0.4, 6, 10]} />
+        <meshStandardMaterial color={SKIN_COLOR} roughness={0.8} />
+      </mesh>
+      {/* shorts */}
+      <mesh castShadow position={[0, 0.72, 0]}>
+        <cylinderGeometry args={[0.27, 0.28, 0.3, 16]} />
+        <meshStandardMaterial color={SHORTS_COLOR} roughness={0.7} />
+      </mesh>
+      {/* torso — broad shoulders, narrow depth so orientation reads from above */}
+      <mesh castShadow position={[0, 1.05, 0]} scale={[1.18, 1, 0.82]}>
+        <cylinderGeometry args={[0.3, 0.24, 0.6, 16]} />
+        <meshStandardMaterial color={kit} roughness={0.55} />
+      </mesh>
+      {/* arms (short sleeves in the kit colour) */}
+      <mesh position={[-0.33, 1.04, 0]} rotation={[0, 0, 0.16]}>
+        <capsuleGeometry args={[0.075, 0.42, 5, 8]} />
+        <meshStandardMaterial color={kit} roughness={0.6} />
+      </mesh>
+      <mesh position={[0.33, 1.04, 0]} rotation={[0, 0, -0.16]}>
+        <capsuleGeometry args={[0.075, 0.42, 5, 8]} />
+        <meshStandardMaterial color={kit} roughness={0.6} />
+      </mesh>
+      {/* head */}
+      <mesh castShadow position={[0, 1.55, 0]} scale={[1, 1.05, 1]}>
+        <sphereGeometry args={[0.2, 16, 16]} />
+        <meshStandardMaterial color={SKIN_COLOR} roughness={0.75} />
+      </mesh>
+      {/* hair: covers crown + back, leaving the face (+Z) skin to show facing */}
+      <mesh position={[0, 1.6, -0.05]}>
+        <sphereGeometry args={[0.205, 16, 16]} />
+        <meshStandardMaterial color={HAIR_COLOR} roughness={0.9} />
+      </mesh>
+    </group>
   );
 }
 
