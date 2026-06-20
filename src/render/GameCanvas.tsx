@@ -80,6 +80,10 @@ function GameDriver({ model }: { model: GameModel }) {
       const realDt = (now - last) / 1000;
       last = now;
 
+      // Menu/pause gating: the sim only advances once started and not paused (tech §16).
+      const meta = useMetaStore.getState();
+      model.time.paused = !meta.started || meta.paused;
+
       const { alpha } = loop.advance(realDt);
 
       // Drain semantic feel events into the real-time feel channels (feel §7/§10).
@@ -179,7 +183,7 @@ function GameDriver({ model }: { model: GameModel }) {
       camBase.current.x += (CAMERA_POS[0] * zoom - camBase.current.x) * ease;
       camBase.current.y += (CAMERA_POS[1] * zoom - camBase.current.y) * ease;
       camBase.current.z += (CAMERA_POS[2] * zoom - camBase.current.z) * ease;
-      const [ox, oy, oz] = feel.cameraOffset();
+      const [ox, oy, oz] = meta.reduceMotion ? [0, 0, 0] : feel.cameraOffset();
       camera.position.set(camBase.current.x + ox, camBase.current.y + oy, camBase.current.z + oz);
 
       r3fAdvance(now);
