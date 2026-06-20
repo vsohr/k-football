@@ -49,7 +49,7 @@ export function createLoop(opts: LoopOptions): Loop {
       }
 
       let steps = 0;
-      while (accumulator >= step && steps < maxSteps) {
+      while (accumulator >= step && steps < maxSteps && opts.time.hitstopRemaining <= 0) {
         opts.simulate(step);
         accumulator -= step;
         steps += 1;

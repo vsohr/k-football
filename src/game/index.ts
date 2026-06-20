@@ -6,7 +6,8 @@ export { createTime, requestHitstop } from './core/time';
 export type { TimeState } from './core/time';
 export { BINDINGS, SHOOT_BUFFER_TICKS } from './config/controls';
 export { BALL_RADIUS, PITCH, PLAYER_RADIUS } from './config/dimensions';
-export { MOVE } from './config/pace';
+export { FEEL, shootHitstopFrames, shootTrauma } from './config/feel';
+export { BALL, DRIBBLE, MOVE } from './config/pace';
 export {
   consumeAction,
   createInputSource,
@@ -17,6 +18,7 @@ export {
 } from './input/source';
 export type { InputIntent, InputSource } from './input/source';
 export { simulate } from './sim';
+export { actionSystem } from './sim/systems/action';
 export { ballSystem } from './sim/systems/ball';
 export { inputSystem } from './sim/systems/input';
 export { movementSystem } from './sim/systems/movement';

@@ -45,6 +45,48 @@ describe('createLoop', () => {
     expect(loop.accumulator).toBe(0);
   });
 
+  it('does not spend accumulated time when hitstop is active at the frame start', () => {
+    const time = createTime();
+    let simSteps = 0;
+    const loop = createLoop({
+      time,
+      simulate: () => {
+        simSteps += 1;
+      },
+    });
+
+    expect(loop.advance(1 / 120)).toEqual({ steps: 0, alpha: 0.5 });
+    time.hitstopRemaining = 1 / 60;
+
+    const result = loop.advance(1 / 60);
+
+    expect(result.steps).toBe(0);
+    expect(result.alpha).toBeCloseTo(0.5);
+    expect(simSteps).toBe(0);
+    expect(time.hitstopRemaining).toBe(0);
+    expect(loop.accumulator).toBeCloseTo(1 / 120);
+  });
+
+  it('stops stepping in the same frame when simulate activates hitstop', () => {
+    const time = createTime();
+    let simSteps = 0;
+    const loop = createLoop({
+      time,
+      simulate: () => {
+        simSteps += 1;
+        if (simSteps === 1) {
+          time.hitstopRemaining = 3 / 60;
+        }
+      },
+    });
+
+    const result = loop.advance(3 / 60);
+
+    expect(result.steps).toBe(1);
+    expect(simSteps).toBe(1);
+    expect(time.hitstopRemaining).toBeCloseTo(3 / 60);
+  });
+
   it('feeds the accumulator slower during slow-mo while simulate dt stays fixed', () => {
     const normalTime = createTime();
     const slowTime = createTime();

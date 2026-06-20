@@ -19,6 +19,9 @@ export interface Ball {
   pos: Vec3;
   prevPos: Vec3;
   vel: Vec3;
+  owner: number | null;
+  pendingImpulse: Vec3 | null;
+  cooldown: number;
 }
 
 export interface Player {
@@ -67,6 +70,7 @@ export interface World {
   match: MatchState;
   rng: Rng;
   events: FeelEvent[];
+  pendingHitstopFrames: number;
 }
 
 const INITIAL_BALL_VEL: Vec3 = {
@@ -164,6 +168,9 @@ function applyInitialState(world: World, seed: number): void {
   world.ball.prevPos.y = 0;
   world.ball.prevPos.z = 0;
   setVec3(world.ball.vel, INITIAL_BALL_VEL);
+  world.ball.owner = null;
+  world.ball.pendingImpulse = null;
+  world.ball.cooldown = 0;
 
   resetPlayers(world.players);
   world.controlledId = 0;
@@ -178,6 +185,7 @@ function applyInitialState(world: World, seed: number): void {
 
   world.rng = createRng(seed);
   world.events.length = 0;
+  world.pendingHitstopFrames = 0;
   initialSeeds.set(world, seed);
 }
 
@@ -188,6 +196,9 @@ export function createWorld(seed: number): World {
       pos: { x: 0, y: 0, z: 0 },
       prevPos: { x: 0, y: 0, z: 0 },
       vel: { x: INITIAL_BALL_VEL.x, y: INITIAL_BALL_VEL.y, z: INITIAL_BALL_VEL.z },
+      owner: null,
+      pendingImpulse: null,
+      cooldown: 0,
     },
     players: [createHumanPlayer()],
     controlledId: 0,
@@ -202,6 +213,7 @@ export function createWorld(seed: number): World {
     },
     rng: createRng(seed),
     events: [],
+    pendingHitstopFrames: 0,
   };
 
   initialSeeds.set(world, seed);

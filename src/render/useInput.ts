@@ -8,9 +8,10 @@ type Dir = 'up' | 'down' | 'left' | 'right';
  * tackle are buffered edges; sprint is held. Clears all held state on window blur so
  * an alt-tab mid-sprint can't leave a key stuck (tech §16).
  */
-export function usePlayerInput(input: InputSource): void {
+export function usePlayerInput(input: InputSource, onActivate?: () => void): void {
   useEffect(() => {
     const held = new Set<Dir>();
+    let activated = false;
 
     const applyAxes = (): void => {
       setMove(
@@ -24,6 +25,10 @@ export function usePlayerInput(input: InputSource): void {
     const onDown = (e: KeyboardEvent): void => {
       const b = BINDINGS[e.code];
       if (!b) return;
+      if (!activated) {
+        activated = true;
+        onActivate?.(); // first gesture: unlock audio (tech §17)
+      }
       if (b === 'up' || b === 'down' || b === 'left' || b === 'right') {
         if (!e.repeat) {
           held.add(b);
@@ -62,5 +67,5 @@ export function usePlayerInput(input: InputSource): void {
       window.removeEventListener('keyup', onUp);
       window.removeEventListener('blur', clear);
     };
-  }, [input]);
+  }, [input, onActivate]);
 }

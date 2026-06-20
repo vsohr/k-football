@@ -6,6 +6,9 @@ interface WorldSnapshot {
     pos: { x: number; y: number; z: number };
     prevPos: { x: number; y: number; z: number };
     vel: { x: number; y: number; z: number };
+    owner: number | null;
+    pendingImpulse: { x: number; y: number; z: number } | null;
+    cooldown: number;
   };
   players: Array<{
     id: number;
@@ -42,6 +45,7 @@ interface WorldSnapshot {
     half: 1 | 2;
   };
   eventsLength: number;
+  pendingHitstopFrames: number;
   rngDraws: number[];
 }
 
@@ -52,6 +56,10 @@ function snapshotWorld(world: World): WorldSnapshot {
       pos: { ...world.ball.pos },
       prevPos: { ...world.ball.prevPos },
       vel: { ...world.ball.vel },
+      owner: world.ball.owner,
+      pendingImpulse:
+        world.ball.pendingImpulse === null ? null : { ...world.ball.pendingImpulse },
+      cooldown: world.ball.cooldown,
     },
     players: world.players.map((player) => ({
       id: player.id,
@@ -68,6 +76,7 @@ function snapshotWorld(world: World): WorldSnapshot {
     input: { ...world.input },
     match: { ...world.match },
     eventsLength: world.events.length,
+    pendingHitstopFrames: world.pendingHitstopFrames,
     rngDraws: [world.rng.next(), world.rng.next(), world.rng.next()],
   };
 }
@@ -81,6 +90,10 @@ describe('world state', () => {
     expect(first.match.phase).toBe('PLAYING');
     expect(first.ball.pos).toEqual({ x: 0, y: 0, z: 0 });
     expect(first.ball.prevPos).toEqual({ x: 0, y: 0, z: 0 });
+    expect(first.ball.owner).toBeNull();
+    expect(first.ball.pendingImpulse).toBeNull();
+    expect(first.ball.cooldown).toBe(0);
+    expect(first.pendingHitstopFrames).toBe(0);
     expect(first.players).toHaveLength(1);
     expect(first.players[0]).toMatchObject({
       id: 0,
@@ -103,6 +116,9 @@ describe('world state', () => {
     world.ball.pos.x = 10;
     world.ball.prevPos.z = -8;
     world.ball.vel.x = -100;
+    world.ball.owner = 0;
+    world.ball.pendingImpulse = { x: 3, y: 0, z: 4 };
+    world.ball.cooldown = 12;
     world.players[0].pos.x = 12;
     world.players[0].vel.z = 7;
     world.players[0].facing = 3;
@@ -113,6 +129,7 @@ describe('world state', () => {
     world.match.scoreHome = 2;
     world.match.clockSec = 88;
     world.events.push({ type: 'bounce', tick: world.tick });
+    world.pendingHitstopFrames = 3;
     world.rng.next();
 
     resetWorld(world);

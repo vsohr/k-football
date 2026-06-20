@@ -1,10 +1,14 @@
 import {
   BALL_RADIUS,
+  BALL,
   BINDINGS,
+  DRIBBLE,
+  FEEL,
   MOVE,
   PITCH,
   PLAYER_RADIUS,
   SHOOT_BUFFER_TICKS,
+  actionSystem,
   ballSystem,
   consumeAction,
   createLoop,
@@ -19,6 +23,8 @@ import {
   resetWorld,
   sampleIntent,
   simulate,
+  shootHitstopFrames,
+  shootTrauma,
   setMove,
   setSprint,
   type InputIntent,
@@ -45,6 +51,7 @@ describe('game public API', () => {
     inputSystem(world);
     movementSystem(world, 0);
     ballSystem(world, 0);
+    actionSystem(world, 0);
     requestHitstop(time, 1);
     simulate(world, 1 / 60);
     resetWorld(world, 10);
@@ -63,6 +70,11 @@ describe('game public API', () => {
     expect(PLAYER_RADIUS).toBe(0.5);
     expect(BALL_RADIUS).toBe(0.22);
     expect(MOVE.maxSpeed).toBe(8);
+    expect(BALL.shotSpeed).toBe(22);
+    expect(DRIBBLE.distance).toBe(0.9);
+    expect(FEEL.shoot.sfx).toBe('shoot');
+    expect(shootHitstopFrames(1)).toBe(7);
+    expect(shootTrauma(1)).toBeCloseTo(0.6);
     expect(BINDINGS.KeyW).toBe('up');
     expect(SHOOT_BUFFER_TICKS).toBe(6);
     expect(result.steps).toBe(0);

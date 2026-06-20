@@ -1,16 +1,21 @@
 import { Canvas, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
   createLoop,
   createTime,
   createWorld,
+  requestHitstop,
+  shootTrauma,
   simulate,
   type Loop,
+  type TimeState,
   type World,
 } from '@/game';
 import { lerp, lerpAngle } from './interpolate';
 import { usePlayerInput } from './useInput';
+import { FeelController } from './feel/FeelController';
+import { AudioBus } from './feel/AudioBus';
 
 /** Camera framing: near-top-down tilted perspective (~57° from horizontal), modest FOV (D6). */
 const CAMERA_POS: [number, number, number] = [0, 26, 15];
@@ -18,18 +23,28 @@ const CAMERA_FOV = 40;
 const BALL_RENDER_RADIUS = 0.4;
 const KIT_COLOR = ['#E8453C', '#2D6CF0'] as const;
 
+interface GameModel {
+  world: World;
+  loop: Loop;
+  time: TimeState;
+  feel: FeelController;
+  audio: AudioBus;
+}
+
 /**
  * Authoritative driver. With `frameloop="never"`, our own rAF advances the fixed-step
- * sim loop, interpolates sim state onto mesh refs (bridge.sync), then calls R3F's
- * `advance(now)` to render exactly once. No `useFrame` for game logic (tech §3.2).
+ * sim loop, drains feel events, interpolates sim state onto mesh refs, applies the
+ * real-time camera shake, then calls R3F's `advance(now)` to render once (tech §3.2).
  */
-function GameDriver({ world, loop }: { world: World; loop: Loop }) {
+function GameDriver({ model }: { model: GameModel }) {
+  const { world, loop, feel, audio } = model;
   const r3fAdvance = useThree((s) => s.advance);
   const camera = useThree((s) => s.camera);
   const ballRef = useRef<THREE.Mesh>(null);
   const playerRefs = useRef<(THREE.Group | null)[]>([]);
 
-  usePlayerInput(world.input);
+  const unlockAudio = useCallback(() => audio.unlock(), [audio]);
+  usePlayerInput(world.input, unlockAudio);
 
   useEffect(() => {
     camera.lookAt(0, 0, 0);
@@ -44,6 +59,18 @@ function GameDriver({ world, loop }: { world: World; loop: Loop }) {
 
       const { alpha } = loop.advance(realDt);
 
+      // Drain semantic feel events into the real-time feel channels (feel §7/§10).
+      for (const ev of world.events) {
+        if (ev.type === 'shoot') {
+          const power = ev.power ?? 1;
+          feel.addTrauma(shootTrauma(power));
+          feel.addFlash(0.12 * power);
+          feel.kick(0, -0.35 * power);
+          audio.shoot(power);
+        }
+      }
+      world.events.length = 0;
+
       // bridge.sync(alpha): interpolate sim transforms onto mesh refs before render.
       const b = world.ball;
       if (ballRef.current) {
@@ -57,22 +84,20 @@ function GameDriver({ world, loop }: { world: World; loop: Loop }) {
         const p = world.players[i];
         const g = playerRefs.current[i];
         if (!g) continue;
-        g.position.set(
-          lerp(p.prevPos.x, p.pos.x, alpha),
-          0,
-          lerp(p.prevPos.z, p.pos.z, alpha),
-        );
-        // facing = atan2(moveX, moveZ): 0 = +Z, dir = (sin,cos). Pip is at local +Z, so
-        // rotation.y = facing aligns it with the heading.
+        g.position.set(lerp(p.prevPos.x, p.pos.x, alpha), 0, lerp(p.prevPos.z, p.pos.z, alpha));
         g.rotation.y = lerpAngle(p.prevFacing, p.facing, alpha);
       }
+
+      // Real-time camera shake/kick (keeps moving during hitstop — feel §8).
+      const [ox, oy, oz] = feel.cameraOffset();
+      camera.position.set(CAMERA_POS[0] + ox, CAMERA_POS[1] + oy, CAMERA_POS[2] + oz);
 
       r3fAdvance(now);
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [world, loop, r3fAdvance]);
+  }, [world, loop, feel, audio, camera, r3fAdvance]);
 
   return (
     <>
@@ -109,12 +134,26 @@ function GameDriver({ world, loop }: { world: World; loop: Loop }) {
 }
 
 function Scene() {
-  // Create the deterministic sim + loop once. Kept out of React state (no re-renders).
-  const { world, loop } = useMemo(() => {
-    const w = createWorld(1);
+  // Build the deterministic sim + loop + feel once. Kept out of React state.
+  const model = useMemo<GameModel>(() => {
+    const world = createWorld(1);
     const time = createTime();
-    const l = createLoop({ time, simulate: (dt) => simulate(w, dt) });
-    return { world: w, loop: l };
+    const feel = new FeelController();
+    const audio = new AudioBus();
+    const loop = createLoop({
+      time,
+      onRealTime: (dt) => feel.update(dt),
+      simulate: (dt) => {
+        simulate(world, dt);
+        // sim requests hitstop by writing a frame count; translate it to the time clock
+        // synchronously so the loop freezes before the next step (tech §6.1).
+        if (world.pendingHitstopFrames > 0) {
+          requestHitstop(time, world.pendingHitstopFrames);
+          world.pendingHitstopFrames = 0;
+        }
+      },
+    });
+    return { world, loop, time, feel, audio };
   }, []);
 
   return (
@@ -139,7 +178,7 @@ function Scene() {
         <planeGeometry args={[50, 34]} />
         <meshStandardMaterial color="#3FAE5A" />
       </mesh>
-      <GameDriver world={world} loop={loop} />
+      <GameDriver model={model} />
     </>
   );
 }
