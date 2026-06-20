@@ -9,3 +9,12 @@ export function lerp(a: number, b: number, t: number): number {
 export function lerpVec3(prev: Vec3, cur: Vec3, t: number): [number, number, number] {
   return [lerp(prev.x, cur.x, t), lerp(prev.y, cur.y, t), lerp(prev.z, cur.z, t)];
 }
+
+/** Interpolate an angle (radians) along the shortest path. */
+export function lerpAngle(a: number, b: number, t: number): number {
+  const TAU = Math.PI * 2;
+  let delta = (b - a) % TAU;
+  if (delta > Math.PI) delta -= TAU;
+  if (delta < -Math.PI) delta += TAU;
+  return a + delta * t;
+}

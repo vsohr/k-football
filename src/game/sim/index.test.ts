@@ -1,4 +1,6 @@
 import { simulate } from './index';
+import { BALL_RADIUS, PITCH } from '../config/dimensions';
+import { setMove } from '../input/source';
 import { createWorld } from './world';
 
 describe('simulate', () => {
@@ -17,30 +19,32 @@ describe('simulate', () => {
 
   it('bounces the ball off the x boundary and clamps inside the pitch', () => {
     const world = createWorld(6);
-    world.ball.pos.x = 19.9;
+    const maxX = PITCH.halfX - BALL_RADIUS;
+    world.ball.pos.x = maxX - 0.1;
     world.ball.vel.x = 10;
     world.ball.vel.z = 0;
 
     simulate(world, 0.1);
 
-    expect(world.ball.pos.x).toBe(20);
+    expect(world.ball.pos.x).toBeCloseTo(maxX);
     expect(world.ball.vel.x).toBeLessThan(0);
-    expect(world.ball.pos.z).toBeGreaterThanOrEqual(-20);
-    expect(world.ball.pos.z).toBeLessThanOrEqual(20);
+    expect(world.ball.pos.z).toBeGreaterThanOrEqual(-PITCH.halfZ + BALL_RADIUS);
+    expect(world.ball.pos.z).toBeLessThanOrEqual(PITCH.halfZ - BALL_RADIUS);
   });
 
   it('bounces the ball off the z boundary and clamps inside the pitch', () => {
     const world = createWorld(7);
-    world.ball.pos.z = -19.9;
+    const minZ = -PITCH.halfZ + BALL_RADIUS;
+    world.ball.pos.z = minZ + 0.1;
     world.ball.vel.x = 0;
     world.ball.vel.z = -10;
 
     simulate(world, 0.1);
 
-    expect(world.ball.pos.z).toBe(-20);
+    expect(world.ball.pos.z).toBeCloseTo(minZ);
     expect(world.ball.vel.z).toBeGreaterThan(0);
-    expect(world.ball.pos.x).toBeGreaterThanOrEqual(-20);
-    expect(world.ball.pos.x).toBeLessThanOrEqual(20);
+    expect(world.ball.pos.x).toBeGreaterThanOrEqual(-PITCH.halfX + BALL_RADIUS);
+    expect(world.ball.pos.x).toBeLessThanOrEqual(PITCH.halfX - BALL_RADIUS);
   });
 
   it('leaves feel events queued for presentation to drain', () => {
@@ -50,5 +54,23 @@ describe('simulate', () => {
     simulate(world, 1 / 60);
 
     expect(world.events).toEqual([{ type: 'bounce', tick: 0 }]);
+  });
+
+  it('runs input, movement, and ball systems before incrementing the tick', () => {
+    const world = createWorld(9);
+    const player = world.players[0];
+    const initialPlayerX = player.pos.x;
+    const initialBallX = world.ball.pos.x;
+
+    setMove(world.input, 1, 0);
+
+    for (let i = 0; i < 5; i += 1) {
+      simulate(world, 1 / 60);
+    }
+
+    expect(world.tick).toBe(5);
+    expect(world.intent.moveX).toBe(1);
+    expect(player.pos.x).toBeGreaterThan(initialPlayerX);
+    expect(world.ball.pos.x).toBeGreaterThan(initialBallX);
   });
 });
