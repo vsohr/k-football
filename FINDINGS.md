@@ -14,6 +14,22 @@ Non-obvious discoveries, gotchas, and rationale worth not re-deriving.
 - **Fidelity ladder ordering**: lighting+shadows (2) + ACES tone mapping (3) + post (7) deliver ~80% of perceived quality. Build feel-loop on primitives first.
 - **Auto-switch to nearest player** so the player fights opponents, not controls.
 
-## Technical notes (to validate during Codex review)
-- Fixed-timestep simulation decoupled from render is required for deterministic feel (hitstop, fixed physics). Don't tie game logic to R3F's variable rAF delta.
-- Candidate physics: Rapier (@react-three/rapier) vs hand-rolled 2D-on-plane kinematics. Arcade ball + simple collisions may not need a full 3D physics engine; evaluate cost.
+## Technical notes (validated in Codex review round 1)
+- Fixed-timestep sim decoupled from render is required for deterministic feel. Each
+  `simulate()` uses a FIXED step always; slow-mo scales how fast the accumulator fills,
+  hitstop freezes it. Never scale the per-tick dt (breaks determinism). Tech §3.
+- **Loop contract decided**: R3F `frameloop="never"` + one manual rAF driver; NO
+  gameplay `useFrame`. Avoids double loops / undefined useFrame order.
+- **Hitstop must use a deferred-impulse contact model** — naive "set vel then integrate
+  same tick" launches the ball ONE tick before the freeze (verified by tracing system
+  order). Feedback fires at contact; ball travels after the freeze. Tech §6.1.
+- **Swept collision is mandatory**: ball moves ~0.467 m/tick vs 0.44 m diameter →
+  discrete checks tunnel thin posts/walls/goal-line (math verified). Tech §6.2.
+- Physics: **custom kinematics chosen** (not Rapier) for MVP, behind a facade so Rapier
+  can swap in later. Codex concurred.
+- **Three clocks**: real (shake/flash/hitstop-countdown/audio), sim (gameplay, fixed
+  step, frozen by hitstop), pause. Tag every timer. Tech §3.1.
+
+## Open decision escalated to user
+- **D6 camera projection**: Codex recommends tilted ORTHOGRAPHIC (readability + stable
+  aim); brainstorm leaned tilted PERSPECTIVE (depth). The only genuine open fork.

@@ -18,13 +18,21 @@ Authoring the detailed spec for k-football (arcade 2.5D web football). Then Code
 
 ## Status
 - [x] Repo scaffold + worktree (worktrees/spec on branch spec/detailed-spec)
-- [ ] 00-overview
-- [ ] 01-game-design
-- [ ] 02-feel-spec
-- [ ] 03-technical-architecture
-- [ ] 04-acceptance-criteria
-- [ ] 05-roadmap
-- [ ] Codex review + incorporate
+- [x] 00-overview, 01-game-design, 02-feel-spec, 03-technical-architecture
+- [x] 04-acceptance-criteria, 05-roadmap
+- [x] Codex review (round 1) — verdict "not ready for M1 as written"; 3 criticals verified
+- [x] Incorporated all critical+major fixes + missing pieces; wrote 99-review-log.md
+- [ ] **USER: confirm D6 (camera: perspective vs orthographic)** — only genuine open fork
+- [ ] Round-2 Codex review of revised spec (next gate)
+- [ ] M0 scaffold → M1 (after D6) — first Codex implementation chunk
+
+## Key outcome of review
+Codex concurred with all flagged defaults EXCEPT camera projection (recommends
+orthographic for readability; brainstorm leaned perspective). Escalated to user as D6.
+Fixed: loop contract, deferred-impulse hitstop, swept collision, 3-clock model,
+M2(dummy)/M3a/M3b reslice, assist+keeper+board edge cases, accessibility, audio policy,
+asset pipeline, determinism caveat, feel event schema, feel dev-tooling into M1.
 
 ## Next steps
-Write spec docs under docs/spec/, then run codex-cli review pass.
+1. Get D6 decision from user. 2. Optional round-2 Codex pass on revised spec.
+3. Merge spec branch to main. 4. Plan M0/M1 (writing-plans) → Codex implements → review.

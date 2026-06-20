@@ -129,6 +129,14 @@ Disproportionately big for one button press — that's the point (P1, P3).
 
 If a shot ever feels small, add hitstop frames *before* touching anything else.
 
+**Latency budget (important — keeps taps responsive):** feedback fires at *contact*
+(audio/shake/flash are instant), and only the ball's *travel* waits for the freeze
+(tech doc §6.1). Still, keep a light **tap** snappy:
+- Tap shot: **2-frame** windup + **3-frame** hitstop ≈ 83 ms input→ball-travel. OK.
+- Full/perfect/heavy shot: up to 4-frame windup + 7-frame hitstop — the big freeze is
+  *reserved* for power, posts, saves, and goals, where the player wants the weight.
+- Never spend a 7-frame freeze on a soft tap — it reads as input lag, not power.
+
 ### 4.5 Save / deflection — keeper's moment
 Gives the keeper weight so saves feel earned, not arbitrary.
 
@@ -220,6 +228,22 @@ about cameras or particles** — it emits semantic events; the feel layer render
 This keeps the sim/presentation seam clean (tech doc §Architecture) so the fidelity
 ladder can climb without touching gameplay.
 
+**Event schema (each `FeelEvent` carries these — not just raw numbers):**
+- `clock`: which timeline each channel uses — hitstop & gameplay squash on **sim
+  time**; shake/flash/camera/audio on **real time** (tech doc §3.1). Tag per channel.
+- `units`: hitstop/windup in **sim frames** (÷60 → seconds); trauma 0–1; durations in
+  ms (real time); particle counts as ints. State the unit at the field.
+- `priority`: when two events fire together, the higher priority wins the *exclusive*
+  channels (slow-mo, flash) — a goal must not be diluted by a simultaneous tackle.
+- `cooldown` / **stacking rule** per channel: trauma is **additive & clamped** (rapid
+  hits stack, then decay); hitstop is **clamped to a per-window max** (§8 item 5) so
+  tackle-into-shot can't freeze for an ugly long time; slow-mo is **exclusive**
+  (latest high-priority wins, no stacking); audio respects a tiny per-clip cooldown to
+  avoid machine-gun retriggers.
+- `timestamp`: the sim tick the event was emitted (for ordering + replay).
+- `scalars`: every channel multiplies by the user accessibility scalars
+  (`shakeScale`, `flashScale`, reduce-motion) at render time (tech doc §19).
+
 ---
 
 ## 8. Critical implementation notes for hitstop (read before coding)
@@ -242,6 +266,16 @@ Hitstop is subtle to get right; these caveats save a day of debugging:
    visibly long time — clamp total hitstop per window.
 6. **Audio does not hitstop** (a frozen sound is a glitch); fire SFX on the real
    timeline at the event instant.
+7. **Feedback at contact; ball travel after the freeze.** The strike's audio/shake/
+   flash/particles fire on the *contact* tick (instant feedback); the ball carries a
+   **pending impulse** and stays put during hitstop, then launches when it clears
+   (tech doc §6.1). This is what makes the freeze read as *power*, not lag — and it's
+   why the naïve "set velocity then integrate same tick" is wrong (the world would
+   freeze one tick *after* the ball already left).
+8. **Accessibility is wired in here, not bolted on.** Every channel multiplies by user
+   scalars (`shakeScale`, `flashScale`) and honors reduce-motion / reduce-flash before
+   it renders (tech doc §19). The slow-mo and flash of the goal sequence must have a
+   photosensitive-safe mode.
 
 ---
 

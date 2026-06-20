@@ -27,20 +27,37 @@ ATTRACT/MENU → KICKOFF → PLAYING → GOAL_CELEBRATION → KICKOFF
                               ↘ FULL_TIME → RESULT → (rematch)
 ```
 - **KICKOFF**: ball at centre spot, scoring-against team kicks off (loser of last
-  goal), brief 1.5 s "GET READY" beat, then live.
+  goal), brief **≤ 0.75 s** "GET READY" beat, then live. (Kept short — the goal
+  celebration already provided the release beat; piling a long kickoff on top is a
+  pacing leak.)
 - **GOAL_CELEBRATION**: see [`02-feel-spec.md`](02-feel-spec.md) §Goal. ~2.5 s total
-  including slow-mo, then straight to kickoff. Skippable with the shoot button.
-- The ball is **always live** otherwise — no other stoppages (P2).
+  including slow-mo, then straight to kickoff. **Skippable** with shoot/pass after the
+  slow-mo peak (~0.8 s in).
+- The ball is **always live** otherwise. Precisely: **no *rule* stoppages** (no fouls/
+  offside/throw-ins/corners/free-kicks). The only pauses are the goal celebration
+  (itself a release beat) and the short kickoff — both bounded and skippable (P2).
+  Keeper catches are the one other brief hold and are kept rare + auto-distributed
+  fast (§6).
 
 ### 1.3 Ball out of play
 There are **no throw-ins / corners / goal kicks** (P2). The pitch is enclosed by
-**invisible walls** (boards) along all four sides; the ball **bounces** off them
-(with damping). This keeps play continuous and frantic — Sociable-Soccer style. Only
-the goal mouths are gaps in the walls. This is a deliberate arcade choice, not a
-placeholder.
+**visible low boards** along all four sides; the ball **bounces** off them (with
+damping). This keeps play continuous and frantic — Sociable-Soccer style. Only the
+goal mouths are gaps in the boards. A deliberate arcade choice, not a placeholder.
 
-> Open: a softer alternative is "ball slows & is auto-returned to nearest player."
-> Default = bouncing boards (more chaotic, more action). Flagged for confirmation.
+Boards are **visible** (a low rail) so rebounds read clearly (P4) — invisible walls
+make bounces feel random. Edge cases must be designed for, not discovered:
+- **Rounded corners** so the ball can't wedge in a 90° corner.
+- **Tangential friction** on bounce so the ball doesn't pinball forever along a wall.
+- **Anti-stuck rule**: if the ball is pinned between a board and a player for > ~0.3 s,
+  nudge it back into play (small impulse toward pitch centre).
+- **Wall-camping mitigation**: AI is allowed to challenge along the boards; a player
+  can't trivially shield against a wall indefinitely (tackle reach + the nudge break it).
+- Explicit **net + back-wall** geometry behind each goal so a scored ball is trapped
+  and ripples rather than vanishing.
+
+> A softer alternative ("ball slows & auto-returns to nearest player") remains a config
+> fallback. Default = bouncing boards (more chaotic, more action). Confirm if disliked.
 
 ---
 
@@ -68,8 +85,11 @@ feels "campy" (players standing around), shrink it.
 
 ## 3. Controls
 
-**Default scheme: keyboard** (D3). Designed so the same *verbs* map cleanly to a
-gamepad later (the input layer is device-agnostic — see tech doc §Input).
+**Default scheme: keyboard** (D3). Gameplay is **keyboard-only** for MVP — the mouse
+is used for **menus only**, not in-match aiming (manual mouse/stick aim is a
+designed-for extension, §3.4, not MVP). The input layer is device-agnostic so a
+gamepad maps to the same *verbs* later (tech doc §Input). *(This supersedes any
+"keyboard + mouse" shorthand — in-match input is keyboard.)*
 
 ### 3.1 Keyboard layout (default)
 | Action | Key(s) | Notes |
@@ -134,6 +154,19 @@ gamepad later (the input layer is device-agnostic — see tech doc §Input).
 - A manual-aim mode (aim with mouse / right stick) is a designed-for extension, not
   MVP.
 
+**Assist must support skill, not replace it** (or it undermines P3). Guardrails on the
+assists:
+- **Visible target**: the current assisted pass target is always indicated, so the
+  player can *steer* it (by facing) rather than be surprised by it.
+- **Hysteresis + short target lock**: the target doesn't flicker between teammates
+  frame-to-frame; once chosen it's held for a brief window unless facing changes
+  decisively. No "the game picked someone I didn't mean".
+- **Assist strength cap**: shot goal-seek only bends aim within a *tolerance* — a
+  badly-aimed shot still misses. Assist nudges, never fully corrects.
+- **Pressure-based error**: passing/shooting under a nearby challenge adds error
+  (and a mistimed first touch fumbles) — so clean situations are rewarded over panicked
+  ones (P3 depth). Assist ≠ immunity.
+
 ---
 
 ## 4. Player switching
@@ -143,6 +176,9 @@ gamepad later (the input layer is device-agnostic — see tech doc §Input).
   ball"). This is critical — the player should fight opponents, not the controls (P2).
 - Switch is **predictive on a pass**: control hands to the intended receiver as the
   pass is played, so you can run them onto it.
+- **Minimum dwell time** after any auto-switch (~0.3 s) so control doesn't ping-pong
+  between two equidistant players during a scramble (a classic top-down annoyance).
+  Manual switch (Tab) always overrides immediately.
 - **Manual override** (Tab) cycles to the next-nearest player for off-ball
   positioning.
 - The keeper is **AI-controlled and never directly switched to** in MVP (keeps the
@@ -183,14 +219,18 @@ sophistication we'll actually build:
 1. **Positioning**: keeper stays in the goal mouth, tracking the ball's lateral
    position along the goal line (clamped to goal width + a little), and steps off the
    line slightly when the ball is close/central (cuts the angle).
-2. **Shot reaction**: when a shot is detected (ball moving fast toward goal), the
-   keeper **dives/lunges** toward the ball's predicted crossing point on the goal
-   line, with a reaction delay and a reach radius. Reach + reaction are the **primary
-   difficulty knobs**.
-3. **Save outcome**: within reach → caught or parried (parry pops the ball loose into
-   play = more action, P2; catch holds it then quick throw/roll-out to a teammate).
-4. **Distribution**: on a catch, after a brief beat, the keeper rolls/throws to the
-   nearest open teammate (restarts attack fast, no stoppage).
+2. **Shot reaction (set → commit → recover)**: the keeper runs a small state machine
+   to avoid jitter: **SET** (tracking, ready), **COMMIT** (a shot is detected → dives/
+   lunges toward the ball's predicted crossing point and *cannot* re-decide mid-dive —
+   commitment is what makes lobs/placement beat him, P3), **RECOVER** (gets up after a
+   dive, briefly vulnerable). Reaction delay and reach radius are the **primary
+   difficulty knobs**; the commit window prevents twitchy frame-perfect saves.
+3. **Save outcome**: within reach → **parry (preferred, common)** pops the ball loose
+   into play = more action, P2; **catch (rarer)** only on softer/central shots, holds
+   it briefly. Biasing toward parries keeps play continuous.
+4. **Distribution**: on a catch, the keeper auto-distributes (roll/throw) to the
+   nearest open teammate within **≤ 0.4 s** — restarts the attack fast, never a real
+   stoppage (P2).
 5. **Out-of-box**: keeper does **not** leave its zone to chase loose balls in MVP
    (it's a goal-zone defender, not a sweeper-keeper). Deferred.
 

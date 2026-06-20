@@ -106,8 +106,18 @@ Legend: **[T]** automated test · **[P]** play-test/manual · **[D]** demo/obser
   profiler / no `setState` in the hot path).
 - [P] **Fixed-step loop** with interpolation: no judder at 144 Hz; stable at 30 FPS
   (no spiral of death; clamp verified).
-- [T] Hitstop pauses sim advancement but **not** audio/shake (real-time effects move
-  during freeze); slow-mo scales sim step.
+- [T] Hitstop pauses the **sim clock** but **not** audio/shake (real-time effects move
+  during freeze); slow-mo scales the sim-time *rate* while each tick stays fixed-STEP.
+- [T] **Deferred-impulse contact** (tech §6.1): on a shot, feedback fires on the
+  contact tick and the ball does **not** displace until hitstop clears (assert ball
+  position unchanged during the freeze, then launches) — proves "freeze before the
+  ball leaves".
+- [T] **Swept collision** (tech §6.2): a ball moving > its diameter per tick still
+  detects a post hit / goal-line crossing / board bounce (no tunneling) — test at
+  arcade speed with a thin collider.
+- [T] **Three-clock discipline**: a determinism/timer test confirms gameplay timers
+  (recovery, AI decision, match clock) advance on sim time and freeze under hitstop,
+  while shake/flash advance under it (clock tags honored).
 - [P] Holds **60 FPS** on a mid laptop with L1–L3; post FX toggleable for low-end.
 - [T] No `any` / implicit any; strict TS passes; ESLint clean.
 - [T] No per-frame allocations in sim hot path (spot-checked / no GC sawtooth in
@@ -116,6 +126,22 @@ Legend: **[T]** automated test · **[P]** play-test/manual · **[D]** demo/obser
   produced by `npm run build`.
 
 ---
+
+## 3b. Accessibility & platform acceptance (ship gate)
+
+- [P] **Reduce-motion** disables/scales shake + camera kick; **reduce-flash** caps the
+  goal flash + bloom; both respect `prefers-reduced-motion` and explicit sliders.
+- [P] **Shake/flash/volume sliders** and mute work and persist across a session.
+- [P] **Colorblind-safe kits**: the two kits are distinguishable under deuteranopia/
+  protanopia sim; controlled-player marker uses shape+brightness, not hue alone.
+- [T/P] **Audio unlock**: no audio attempts before the first user gesture; SFX work
+  after; audio load failure degrades to muted without crashing.
+- [P] **Tab blur** auto-pauses + mutes; resume on focus; no `dt` spike or buried goal.
+- [P] **Stuck-key safety**: `window.blur` mid-sprint clears held inputs (no runaway).
+- [P] **WebGL context loss** shows a paused overlay and recovers on restore.
+- [D] **No WebGL2 / unsupported** → graceful screen, not a blank canvas.
+- [P] **Resize / DPR**: layout + framing hold on small-laptop and ultrawide; HUD safe
+  zones respected; DPR capped for perf.
 
 ## 4. Definition of Done (per task & per milestone)
 

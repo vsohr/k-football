@@ -95,8 +95,13 @@ keeps a hard seam between **simulation** (never changes as we climb) and
 - UI: scoreboard + match timer
 - AI: simple positioning, support runs, defending shape
 - Tactics: simple formations only
-- The full **feel layer** (P1) for all four actions + goals — this is non-negotiable
-  even in MVP, because it *is* the product.
+- The **core feel layer** (P1) for all four actions + goals — non-negotiable even in
+  MVP, because it *is* the product. "Core" = the feel *mechanics*: hitstop, screen
+  shake, camera kick, the 5 core SFX, basic particles (turf/sparks/confetti), ball
+  trail, squash, and the goal sequence (flash/slow-mo/net ripple). It is **not** the
+  full L8 *dressing* (dynamic crowd audio, instanced stands, floodlights, near-miss
+  emphasis) — that is deferred to M7. MVP must *feel* finished on primitives; it need
+  not be fully *dressed*.
 
 ### Explicitly out of scope (MVP)
 - Fouls, offside, throw-ins, corners, free kicks, penalties (P2: no stoppages)
@@ -151,12 +156,15 @@ Everything in the other spec docs exists to produce exactly that loop.
 |---|----------|---------|--------------|
 | D1 | Art direction | **Stylized-clean** low-poly | Chunky-retro |
 | D2 | Shot input | **Tap** w/ brief auto-windup | Hold-to-charge power |
-| D3 | Primary input | **Keyboard + mouse** | Gamepad-first |
+| D3 | In-match input | **Keyboard** (mouse = menus only) | Gamepad-first |
 | D4 | Match length | **2-min halves** (4 min total) | 90s / 3-min |
 | D5 | Pass aim | **Assisted** (auto-targets best teammate in facing arc) | Manual stick-aimed |
+| D6 | Camera projection | **Open — needs your call.** Spec leaned tilted *perspective* (~55–60°) for depth; Codex review recommends tilted **orthographic** for top-down readability + undistorted aim. | Perspective ↔ Orthographic |
 
 These are flagged again where they matter in the other docs. Changing a default is
-cheap now, expensive after implementation — so confirm early.
+cheap now, expensive after implementation — so confirm early. **D6 is the one genuine
+open fork** (the rest have safe defaults); the Codex review (`docs/spec/99-review-log.md`)
+argues orthographic, the original brainstorm leaned perspective.
 
 ---
 
