@@ -1,4 +1,5 @@
 import { Canvas, useThree } from '@react-three/fiber';
+import { SoftShadows } from '@react-three/drei';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
@@ -214,13 +215,18 @@ function GameDriver({ model }: { model: GameModel }) {
             playerRefs.current[i] = el;
           }}
         >
-          <mesh castShadow position={[0, 0.9, 0]}>
-            <capsuleGeometry args={[0.4, 1, 8, 16]} />
-            <meshStandardMaterial color={KIT_COLOR[p.team]} />
+          <mesh castShadow position={[0, 0.85, 0]}>
+            <capsuleGeometry args={[0.38, 0.95, 8, 16]} />
+            <meshStandardMaterial color={KIT_COLOR[p.team]} roughness={0.6} />
+          </mesh>
+          {/* head */}
+          <mesh castShadow position={[0, 1.5, 0]}>
+            <sphereGeometry args={[0.26, 16, 16]} />
+            <meshStandardMaterial color="#e8c39a" roughness={0.7} />
           </mesh>
           {/* facing pip (local +Z = forward) */}
-          <mesh position={[0, 0.9, 0.45]}>
-            <boxGeometry args={[0.18, 0.18, 0.3]} />
+          <mesh position={[0, 0.95, 0.42]}>
+            <boxGeometry args={[0.16, 0.16, 0.28]} />
             <meshStandardMaterial color="#0d1117" />
           </mesh>
           {p.control === 'human' && (
@@ -264,6 +270,7 @@ function Scene() {
 
   return (
     <>
+      <SoftShadows size={26} samples={10} focus={0.85} />
       <hemisphereLight args={['#9DC9FF', '#3a5a2a', 0.6]} />
       <ambientLight intensity={0.25} />
       <directionalLight
